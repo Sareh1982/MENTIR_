@@ -1,8 +1,8 @@
 const CACHE_NAME = 'mentiroso-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  '/MENTIR_/',
+  '/MENTIR_/index.html',
+  '/MENTIR_/manifest.json'
 ];
 
 // Instalación del Service Worker
