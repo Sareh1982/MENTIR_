@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mentir🐻</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Juego de engaño y deducción - Descubre al mentiroso">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Mentir🐻">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-image: url('https://i.imgur.com/VLAF5JK.jpeg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            background-color: #c8b3e6;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 10px 30px rgba(102,126,234,0.3);
+            max-height: 95vh;
+            overflow-y: auto;
+        }
+
+        /* Contenedor más ancho para pantalla de selección de jugador (para ver columnas completas) */
+        #player-setup-screen .container,
+        body:has(#player-setup-screen:not(.hidden)) .container {
+            max-width: 400px;
+        }
+
+        /* En móviles medianos (3 columnas) */
+        @media (min-width: 420px) {
+            #player-setup-screen .container,
+            body:has(#player-setup-screen:not(.hidden)) .container {
+                max-width: 500px;
+            }
+        }
+
+        /* En móviles grandes (4 columnas) */
+        @media (min-width: 580px) {
+            #player-setup-screen .container,
+            body:has(#player-setup-screen:not(.hidden)) .container {
+                max-width: 600px;
+            }
+        }
+
+        /* En tablets y PC (5 columnas) */
+        @media (min-width: 768px) {
+            #player-setup-screen .container,
+            body:has(#player-setup-screen:not(.hidden)) .container {
+                max-width: 650px;
+            }
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 2.25em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            font-weight: bold;
+        }
+
+        h1 .emoji-logo {
+            font-size: 2.5em;
+        }
+
+        h2 {
+            color: #764ba2;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        input[type="number"],
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+
+        input[type="number"]:focus,
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.02);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .avatar-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin: 20px 0;
+            max-height: min(400px, 50vh);
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* 3 columnas en móviles medianos */
+        @media (min-width: 420px) {
+            .avatar-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* 4 columnas en móviles grandes */
+        @media (min-width: 580px) {
+            .avatar-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        /* 5 columnas en tablets y PC */
+        @media (min-width: 768px) {
+            .avatar-grid {
+                grid-template-columns: repeat(5, 1fr);
+            }
+        }
+
+        /* Barra de scroll visible y grande */
+        .avatar-grid::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        .avatar-grid::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .avatar-grid::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        .avatar-grid::-webkit-scrollbar-thumb:hover {
+            background: #5568d3;
+        }
+
+        .avatar-option {
+            font-size: 4em;
+            text-align: center;
+            padding: 8px;
+            border: 3px solid transparent;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .avatar-option:hover:not(.disabled) {
+            transform: scale(1.1);
+            border-color: #667eea;
+        }
+
+        .avatar-option.selected {
+            border-color: #764ba2;
+            background: #f0f0f0;
+        }
+
+        .avatar-option.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            filter: grayscale(100%);
+        }
+
+        .player-reveal {
+            text-align: center;
+        }
+
+        .player-avatar-large {
+            font-size: 10em;
+            margin: 20px 0;
+        }
+
+        .player-name {
+            font-size: 2em;
+            color: #667eea;
+            margin-bottom: 30px;
+        }
+
+        .reveal-word {
+            font-size: 3em;
+            font-weight: bold;
+            color: #333;
+            margin: 40px 0;
+            padding: 20px;
+            background: #f0f0f0;
+            border-radius: 15px;
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .reveal-word.impostor {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .timer {
+            font-size: 4em;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin: 50px 0;
+        }
+
+        .timer.warning {
+            color: #ff6b6b;
+            animation: blink 1s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .game-over {
+            text-align: center;
+        }
+
+        .game-over h2 {
+            font-size: 3em;
+            color: #ff6b6b;
+            margin-bottom: 30px;
+        }
+
+        .continue-prompt {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .continue-prompt h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .button-group button {
+            flex: 1;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-back {
+            background: #6c757d;
+        }
+
+        .summary-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+
+        .summary-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .summary-avatar {
+            font-size: 4em;
+        }
+
+        .summary-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .progress-indicator {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .edit-player-item {
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .edit-player-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .edit-avatar-wrapper {
+            flex: 0 0 100px;
+            text-align: center;
+        }
+
+        .edit-avatar {
+            font-size: 4em;
+            cursor: pointer;
+            padding: 5px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            display: inline-block;
+            background: white;
+            transition: border-color 0.3s;
+            width: 100px;
+            height: 100px;
+            line-height: 90px;
+        }
+
+        .edit-avatar:hover {
+            border-color: #667eea;
+        }
+
+        .edit-name-wrapper {
+            flex: 1;
+        }
+
+        .edit-name-input {
+            width: 100%;
+            height: 100px;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1.1em;
+            box-sizing: border-box;
+        }
+
+        .edit-name-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .delete-player-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            transition: background 0.3s;
+        }
+
+        .delete-player-btn:hover {
+            background: #c82333;
+        }
+
+        .impostor-reveal-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            border-radius: 10px;
+            animation: reveal-bounce 0.5s ease-out;
+        }
+
+        @keyframes reveal-bounce {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .impostor-reveal-avatar {
+            font-size: 5em;
+        }
+
+        .impostor-reveal-name {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: white;
+        }
+
+        .avatar-picker-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .avatar-picker-content {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            max-width: 360px;
+            width: 90%;
+            box-shadow: 0 25px 70px rgba(0,0,0,0.5), 0 15px 40px rgba(102,126,234,0.4);
+        }
+
+        /* En móviles medianos (3 columnas) */
+        @media (min-width: 420px) {
+            .avatar-picker-content {
+                max-width: 480px;
+            }
+        }
+
+        /* En móviles grandes (4 columnas) */
+        @media (min-width: 580px) {
+            .avatar-picker-content {
+                max-width: 550px;
+            }
+        }
+
+        /* En tablets y PC (5 columnas) */
+        @media (min-width: 768px) {
+            .avatar-picker-content {
+                max-width: 600px;
+            }
+        }
+
+        .avatar-picker-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin: 20px 0;
+            max-height: min(400px, 50vh);
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* 3 columnas en móviles medianos */
+        @media (min-width: 420px) {
+            .avatar-picker-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* 4 columnas en móviles grandes */
+        @media (min-width: 580px) {
+            .avatar-picker-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        /* 5 columnas en tablets y PC */
+        @media (min-width: 768px) {
+            .avatar-picker-grid {
+                grid-template-columns: repeat(5, 1fr);
+            }
+        }
+
+        /* Barra de scroll visible y grande en modal */
+        .avatar-picker-grid::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        .avatar-picker-grid::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .avatar-picker-grid::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        .avatar-picker-grid::-webkit-scrollbar-thumb:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Audio para música de fondo -->
+        <audio id="background-music" loop>
+            <!-- AÑADE AQUÍ LA URL DE TU MÚSICA -->
+            <!-- Ejemplo: <source src="https://tu-url-aqui.mp3" type="audio/mpeg"> -->
+        </audio>
+
+        <!-- Pantalla de continuar partida -->
+        <div id="continue-screen" class="hidden">
+            <h1>MENTIR<span class="emoji-logo">🐻</span></h1>
+            <div class="continue-prompt">
+                <h3>¡Partida anterior detectada!</h3>
+                <p>Se encontró una partida guardada. ¿Quieres continuar o empezar una nueva?</p>
+            </div>
+            <div class="button-group">
+                <button onclick="continueGame()">Continuar</button>
+                <button class="btn-secondary" onclick="newGame()">Nueva Partida</button>
+            </div>
+        </div>
+
+        <!-- Pantalla de configuración -->
+        <div id="config-screen">
+            <h1>MENTIR<span class="emoji-logo">🐻</span></h1>
+            <div class="input-group">
+                <label>Número de jugadores (3-15):</label>
+                <input type="number" id="num-players" min="3" max="15" value="5" onchange="updateMaxImpostors()">
+            </div>
+            <div class="input-group">
+                <label>Número de mentirosos:</label>
+                <input type="number" id="num-impostors" min="1" max="5" value="1">
+            </div>
+            <button onclick="startPlayerSetup()">Siguiente →</button>
+        </div>
+
+        <!-- Pantalla de selección individual de jugador -->
+        <div id="player-setup-screen" class="hidden">
+            <div class="progress-indicator" id="progress-text"></div>
+            <h2 id="player-setup-title">Jugador 1</h2>
+            
+            <div class="input-group">
+                <label>Nombre:</label>
+                <input type="text" id="current-player-name-input" placeholder="Introduce tu nombre">
+            </div>
+
+            <label>Elige tu avatar:</label>
+            <div class="avatar-grid" id="avatar-grid"></div>
+
+            <div class="button-group">
+                <button class="btn-back" onclick="previousPlayer()" id="back-btn">← Atrás</button>
+                <button onclick="confirmPlayer()" id="next-player-btn">Siguiente →</button>
+            </div>
+        </div>
+
+        <!-- Pantalla de resumen -->
+        <div id="summary-screen" class="hidden">
+            <h2>Resumen de Jugadores</h2>
+            <div class="summary-list" id="summary-list"></div>
+            <div class="button-group">
+                <button class="btn-back" onclick="backToPlayerSetup()">← Editar</button>
+                <button onclick="startGame()">¡Empezar Juego!</button>
+            </div>
+        </div>
+
+        <!-- Pantalla de revelación -->
+        <div id="reveal-screen" class="hidden">
+            <div class="player-reveal">
+                <div class="player-avatar-large" id="player-avatar"></div>
+                <div class="player-name" id="current-reveal-name"></div>
+                <button id="reveal-btn" onclick="revealRole()">👆 Toca para ver tu rol</button>
+                <div id="role-display" class="hidden">
+                    <div class="reveal-word" id="word-display"></div>
+                    <button onclick="nextRevealPlayer()">Siguiente Jugador →</button>
+                </div>
+                <button onclick="cancelGameInProgress()" class="btn-secondary" style="margin-top: 20px;">
+                    ← Cancelar Partida
+                </button>
+            </div>
+        </div>
+
+        <!-- Pantalla de timer -->
+        <div id="timer-screen" class="hidden">
+            <h2>🔍 ¡A CAZAR!</h2>
+            <div class="timer" id="timer">5:00</div>
+            <button id="music-toggle-btn" onclick="toggleMusic()" style="margin-bottom: 15px; background: #28a745;">
+                🔊 Activar Música
+            </button>
+            <button onclick="endGame()">Terminar Partida</button>
+        </div>
+
+        <!-- Pantalla de fin -->
+        <div id="end-screen" class="hidden">
+            <div class="game-over">
+                <h2>🎭 FIN DEL JUEGO</h2>
+                <p style="font-size: 1.5em; margin: 30px 0;">¿Encontraron al mentiroso?</p>
+                <button onclick="showImpostors()">👁️ Mostrar Mentiroso(s)</button>
+            </div>
+        </div>
+
+        <!-- Pantalla revelación de impostores -->
+        <div id="impostor-reveal-screen" class="hidden">
+            <h2>🐻 LOS MENTIROSOS ERAN...</h2>
+            <div id="impostor-list" class="summary-list"></div>
+            <div class="button-group">
+                <button onclick="resetGame()">Nueva Partida</button>
+                <button onclick="replayWithSamePlayers()">Repetir con Mismos Jugadores</button>
+            </div>
+            <button onclick="editPlayers()" style="margin-top: 10px;" class="btn-secondary">✏️ Editar Jugadores</button>
+        </div>
+
+        <!-- Pantalla editar jugadores -->
+        <div id="edit-players-screen" class="hidden">
+            <h2>Editar Jugadores</h2>
+            <div id="edit-players-list" class="summary-list"></div>
+            <button onclick="addNewPlayer()" class="btn-secondary" style="margin: 10px 0;">➕ Añadir Jugador</button>
+            <div class="button-group">
+                <button class="btn-back" onclick="cancelEdit()">← Cancelar</button>
+                <button onclick="saveEditedPlayers()">Guardar y Jugar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Lista de 500 palabras variadas en español
+        const WORDS = [
+            // Objetos cotidianos
+            "Mesa", "Silla", "Lámpara", "Ventana", "Puerta", "Llave", "Espejo", "Reloj", "Teléfono", "Ordenador",
+            "Televisión", "Sofá", "Cama", "Almohada", "Manta", "Cortina", "Alfombra", "Cuadro", "Estantería", "Armario",
+            "Nevera", "Horno", "Microondas", "Cafetera", "Tostadora", "Lavadora", "Plancha", "Aspiradora", "Escoba", "Cubo",
+            
+            // Comida y bebida
+            "Pizza", "Hamburguesa", "Pasta", "Paella", "Tortilla", "Bocadillo", "Taco", "Sushi", "Ensalada", "Sopa",
+            "Helado", "Tarta", "Chocolate", "Galleta", "Caramelo", "Pan", "Queso", "Jamón", "Chorizo", "Salchichón",
+            "Café", "Té", "Zumo", "Agua", "Refresco", "Cerveza", "Vino", "Sangría", "Batido", "Smoothie",
+            "Manzana", "Plátano", "Naranja", "Fresa", "Sandía", "Melón", "Uva", "Pera", "Melocotón", "Cereza",
+            
+            // Animales
+            "Perro", "Gato", "León", "Tigre", "Elefante", "Jirafa", "Mono", "Oso", "Lobo", "Zorro",
+            "Conejo", "Caballo", "Vaca", "Cerdo", "Oveja", "Cabra", "Gallina", "Pato", "Pavo", "Loro",
+            "Águila", "Búho", "Paloma", "Gaviota", "Pingüino", "Pez", "Tiburón", "Ballena", "Delfín", "Pulpo",
+            "Serpiente", "Cocodrilo", "Tortuga", "Rana", "Mariposa", "Abeja", "Hormiga", "Araña", "Mosquito", "Caracol",
+            
+            // Profesiones
+            "Médico", "Profesor", "Ingeniero", "Arquitecto", "Abogado", "Chef", "Camarero", "Policía", "Bombero", "Piloto",
+            "Conductor", "Carpintero", "Fontanero", "Electricista", "Pintor", "Jardinero", "Peluquero", "Fotógrafo", "Periodista", "Escritor",
+            
+            // Deportes
+            "Fútbol", "Baloncesto", "Tenis", "Natación", "Ciclismo", "Running", "Boxeo", "Yoga", "Gimnasia", "Esquí",
+            "Surf", "Voleibol", "Golf", "Atletismo", "Escalada", "Karate", "Judo", "Ping Pong", "Bádminton", "Hockey",
+            
+            // Lugares
+            "Playa", "Montaña", "Bosque", "Desierto", "Ciudad", "Pueblo", "Campo", "Río", "Lago", "Mar",
+            "Museo", "Cine", "Teatro", "Parque", "Zoo", "Biblioteca", "Hospital", "Escuela", "Universidad", "Oficina",
+            "Restaurante", "Bar", "Cafetería", "Supermercado", "Tienda", "Centro Comercial", "Gimnasio", "Piscina", "Estadio", "Aeropuerto",
+            
+            // Transporte
+            "Coche", "Moto", "Bicicleta", "Autobús", "Tren", "Metro", "Avión", "Barco", "Helicóptero", "Patinete",
+            
+            // Ropa y accesorios
+            "Camisa", "Pantalón", "Vestido", "Falda", "Jersey", "Chaqueta", "Abrigo", "Zapato", "Zapatilla", "Bota",
+            "Calcetín", "Gorra", "Sombrero", "Bufanda", "Guante", "Gafas", "Reloj", "Pulsera", "Collar", "Anillo",
+            "Mochila", "Bolso", "Maleta", "Paraguas", "Cinturón", "Corbata", "Pañuelo", "Cartera", "Llavero", "Pendiente",
+            
+            // Instrumentos musicales
+            "Guitarra", "Piano", "Batería", "Violín", "Flauta", "Trompeta", "Saxofón", "Bajo", "Arpa", "Acordeón",
+            
+            // Tecnología
+            "Móvil", "Tablet", "Portátil", "Ratón", "Teclado", "Pantalla", "Impresora", "Cámara", "Auriculares", "Altavoz",
+            "USB", "Disco Duro", "Router", "Cargador", "Cable", "Batería", "Micrófono", "Webcam", "Consola", "Mando",
+            
+            // Naturaleza
+            "Árbol", "Flor", "Rosa", "Margarita", "Tulipán", "Girasol", "Cactus", "Palmera", "Hoja", "Rama",
+            "Piedra", "Arena", "Tierra", "Césped", "Nube", "Sol", "Luna", "Estrella", "Arcoíris", "Rayo",
+            "Lluvia", "Nieve", "Granizo", "Viento", "Tormenta", "Huracán", "Tornado", "Terremoto", "Volcán", "Avalancha",
+            
+            // Colores
+            "Rojo", "Azul", "Amarillo", "Verde", "Naranja", "Morado", "Rosa", "Negro", "Blanco", "Gris",
+            "Marrón", "Dorado", "Plateado", "Turquesa", "Violeta", "Beige", "Granate", "Cian", "Lima", "Fucsia",
+            
+            // Emociones y sentimientos
+            "Alegría", "Tristeza", "Enfado", "Miedo", "Sorpresa", "Asco", "Amor", "Odio", "Celos", "Envidia",
+            "Orgullo", "Vergüenza", "Culpa", "Nostalgia", "Melancolía", "Euforia", "Ansiedad", "Calma", "Paz", "Ira",
+            
+            // Acciones
+            "Correr", "Saltar", "Bailar", "Cantar", "Leer", "Escribir", "Dibujar", "Pintar", "Cocinar", "Comer",
+            "Beber", "Dormir", "Despertar", "Caminar", "Nadar", "Volar", "Conducir", "Estudiar", "Trabajar", "Jugar",
+            
+            // Países y ciudades
+            "España", "Francia", "Italia", "Alemania", "Portugal", "Inglaterra", "Grecia", "México", "Argentina", "Colombia",
+            "Madrid", "Barcelona", "Valencia", "Sevilla", "París", "Roma", "Londres", "Berlín", "Lisboa", "Atenas",
+            
+            // Cuerpo humano
+            "Cabeza", "Cara", "Ojo", "Nariz", "Boca", "Oreja", "Pelo", "Cuello", "Hombro", "Brazo",
+            "Mano", "Dedo", "Pecho", "Espalda", "Barriga", "Pierna", "Rodilla", "Pie", "Corazón", "Cerebro",
+            
+            // Tiempo y clima
+            "Primavera", "Verano", "Otoño", "Invierno", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado",
+            "Domingo", "Mañana", "Tarde", "Noche", "Amanecer", "Atardecer", "Medianoche", "Mediodía", "Hora", "Minuto",
+            
+            // Hobbies y entretenimiento
+            "Lectura", "Música", "Cine", "Series", "Videojuegos", "Fotografía", "Pintura", "Escultura", "Cocina", "Jardinería",
+            "Viajes", "Senderismo", "Camping", "Pesca", "Caza", "Ajedrez", "Póker", "Magia", "Origami", "Puzzle",
+            
+            // Materiales
+            "Madera", "Metal", "Plástico", "Cristal", "Papel", "Cartón", "Tela", "Cuero", "Goma", "Cemento",
+            
+            // Formas y figuras
+            "Círculo", "Cuadrado", "Triángulo", "Rectángulo", "Estrella", "Corazón", "Rombo", "Hexágono", "Óvalo", "Esfera",
+            
+            // Expresiones y frases hechas
+            "Estar en las nubes", "Llover a cántaros", "Costar un ojo de la cara", "Tirar la casa por la ventana", "Ser pan comido",
+            "Meter la pata", "Dormir como un tronco", "Estar en el séptimo cielo", "Tener mala leche", "Ponerse las pilas",
+            "Dar en el clavo", "Estar en la luna", "Ser la oveja negra", "Tomar el pelo", "Hacer la vista gorda",
+            "Estar como una cabra", "Ser un cero a la izquierda", "Dar gato por liebre", "Irse por las ramas", "No tener pelos en la lengua",
+            
+            // Películas famosas
+            "Titanic", "Avatar", "Matrix", "Gladiator", "Inception", "Frozen", "Toy Story", "Shrek", "El Rey León", "Buscando a Nemo",
+            "Interstellar", "Coco", "Up", "Joker", "Parasite", "Batman", "Spiderman", "Harry Potter", "Star Wars", "Jurassic Park",
+            
+            // Marcas y productos conocidos
+            "Coca Cola", "Pepsi", "Nike", "Adidas", "Apple", "Samsung", "Google", "Facebook", "Instagram", "YouTube",
+            "Netflix", "Spotify", "Amazon", "McDonald's", "Burger King", "Starbucks", "IKEA", "Zara", "H&M", "Lego",
+            
+            // Conceptos abstractos
+            "Libertad", "Justicia", "Igualdad", "Democracia", "Dictadura", "Paz", "Guerra", "Vida", "Muerte", "Tiempo",
+            "Espacio", "Infinito", "Nada", "Todo", "Existencia", "Realidad", "Sueño", "Pesadilla", "Memoria", "Olvido",
+            
+            // Números y matemáticas
+            "Cero", "Uno", "Diez", "Cien", "Mil", "Millón", "Suma", "Resta", "Multiplicación", "División",
+            
+            // Varios
+            "Fiesta", "Cumpleaños", "Boda", "Funeral", "Graduación", "Navidad", "Halloween", "Carnaval", "Vacaciones", "Fin de semana"
+        ];
+
+        // 35 avatares emoji (animales, objetos, caras)
+        const AVATARS = [
+            "🦁", "🐶", "🐱", "🐼", "🐨",
+            "🦊", "🐸", "🐷", "🦉", "🦄",
+            "😀", "😎", "🤓", "😜", "🥳",
+            "🤩", "😇", "🤠", "🥸", "🤡",
+            "🎮", "🍕", "🎨", "🚀", "🎭",
+            "🐩", "🐕", "👽", "🦖", "🐢",
+            "🦋", "🌻", "⚡", "🌈", "🔮"
+        ];
+
+        // Variables del juego
+        let gameState = {
+            currentWordList: WORDS,
+            numPlayers: 0,
+            numImpostors: 1,
+            players: [],
+            currentSetupIndex: 0,
+            selectedAvatars: [],
+            currentRevealIndex: 0,
+            word: '',
+            impostorIndices: [],
+            timerSeconds: 300,
+            timerInterval: null,
+            savedAt: null
+        };
+
+        // Verificar si hay partida guardada al cargar
+        window.onload = function() {
+            checkSavedGame();
+            updateMaxImpostors(); // Establecer límite inicial
+        };
+
+        // Calcular máximo de mentirosos según número de jugadores
+        function updateMaxImpostors() {
+            const numPlayers = parseInt(document.getElementById('num-players').value);
+            const impostorInput = document.getElementById('num-impostors');
+            
+            // Máximo: aproximadamente 1/3 del total, pero siempre menos de la mitad
+            const maxImpostors = Math.max(1, Math.floor(numPlayers / 3));
+            
+            impostorInput.max = maxImpostors;
+            
+            // Si el valor actual excede el máximo, ajustarlo
+            if (parseInt(impostorInput.value) > maxImpostors) {
+                impostorInput.value = maxImpostors;
+            }
+            
+            // Actualizar el label para mostrar el máximo
+            const label = impostorInput.previousElementSibling;
+            label.textContent = `Número de mentirosos (máx. ${maxImpostors}):`;
+        }
+
+        function checkSavedGame() {
+            const saved = localStorage.getItem('mentirosoGame');
+            if (saved) {
+                const savedGame = JSON.parse(saved);
+                const twoHours = 2 * 60 * 60 * 1000;
+                if (Date.now() - savedGame.savedAt < twoHours) {
+                    show('continue-screen');
+                    hide('config-screen');
+                    return;
+                }
+            }
+            localStorage.removeItem('mentirosoGame');
+        }
+
+        function continueGame() {
+            const saved = JSON.parse(localStorage.getItem('mentirosoGame'));
+            gameState = saved;
+            
+            if (gameState.currentRevealIndex < gameState.players.length) {
+                hide('continue-screen');
+                show('reveal-screen');
+                showCurrentReveal();
+            } else {
+                hide('continue-screen');
+                show('timer-screen');
+                startTimer();
+            }
+        }
+
+        function newGame() {
+            localStorage.removeItem('mentirosoGame');
+            hide('continue-screen');
+            show('config-screen');
+        }
+
+        function saveGame() {
+            gameState.savedAt = Date.now();
+            localStorage.setItem('mentirosoGame', JSON.stringify(gameState));
+        }
+
+        function startPlayerSetup() {
+            const numPlayers = parseInt(document.getElementById('num-players').value);
+            const numImpostors = parseInt(document.getElementById('num-impostors').value);
+
+            if (numPlayers < 3 || numPlayers > 15) {
+                alert('El número de jugadores debe estar entre 3 y 15');
+                return;
+            }
+
+            const maxImpostors = Math.max(1, Math.floor(numPlayers / 3));
+            
+            if (numImpostors < 1 || numImpostors > maxImpostors) {
+                alert(`Con ${numPlayers} jugadores, el máximo de mentirosos es ${maxImpostors}`);
+                return;
+            }
+
+            gameState.numPlayers = numPlayers;
+            gameState.numImpostors = numImpostors;
+            gameState.players = [];
+            gameState.selectedAvatars = [];
+            gameState.currentSetupIndex = 0;
+
+            hide('config-screen');
+            show('player-setup-screen');
+            showPlayerSetup();
+        }
+
+        function showPlayerSetup() {
+            const index = gameState.currentSetupIndex;
+            document.getElementById('progress-text').textContent = `Jugador ${index + 1} de ${gameState.numPlayers}`;
+            document.getElementById('player-setup-title').textContent = `Jugador ${index + 1}`;
+            
+            // Si hay datos guardados, cargarlos
+            const savedPlayer = gameState.players[index];
+            if (savedPlayer) {
+                document.getElementById('current-player-name-input').value = savedPlayer.name;
+            } else {
+                document.getElementById('current-player-name-input').value = '';
+            }
+
+            // Generar grid de avatares
+            const grid = document.getElementById('avatar-grid');
+            grid.innerHTML = '';
+            
+            AVATARS.forEach((avatar, i) => {
+                const div = document.createElement('div');
+                div.className = 'avatar-option';
+                div.textContent = avatar;
+                div.dataset.index = i;
+
+                // Deshabilitar si ya está seleccionado por otro jugador
+                if (gameState.selectedAvatars.includes(i) && (!savedPlayer || savedPlayer.avatarIndex !== i)) {
+                    div.classList.add('disabled');
+                } else {
+                    div.onclick = () => selectAvatar(i);
+                }
+
+                // Marcar como seleccionado si es el avatar del jugador actual
+                if (savedPlayer && savedPlayer.avatarIndex === i) {
+                    div.classList.add('selected');
+                }
+
+                grid.appendChild(div);
+            });
+
+            // SIEMPRE mostrar botón atrás
+            document.getElementById('back-btn').style.display = 'block';
+        }
+
+        function selectAvatar(index) {
+            // Remover selección anterior
+            document.querySelectorAll('.avatar-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+
+            // Marcar como seleccionado
+            document.querySelector(`[data-index="${index}"]`).classList.add('selected');
+        }
+
+        function confirmPlayer() {
+            const name = document.getElementById('current-player-name-input').value.trim();
+            const selectedAvatar = document.querySelector('.avatar-option.selected');
+
+            if (!name) {
+                alert('Por favor, introduce un nombre');
+                return;
+            }
+
+            if (!selectedAvatar) {
+                alert('Por favor, elige un avatar');
+                return;
+            }
+
+            const avatarIndex = parseInt(selectedAvatar.dataset.index);
+            
+            // Guardar jugador
+            const currentPlayer = gameState.players[gameState.currentSetupIndex];
+            if (currentPlayer) {
+                // Liberar avatar anterior si cambió
+                const oldIndex = gameState.selectedAvatars.indexOf(currentPlayer.avatarIndex);
+                if (oldIndex !== -1 && currentPlayer.avatarIndex !== avatarIndex) {
+                    gameState.selectedAvatars.splice(oldIndex, 1);
+                }
+            }
+
+            gameState.players[gameState.currentSetupIndex] = {
+                name: name,
+                avatar: AVATARS[avatarIndex],
+                avatarIndex: avatarIndex
+            };
+
+            // Agregar avatar a seleccionados si no está
+            if (!gameState.selectedAvatars.includes(avatarIndex)) {
+                gameState.selectedAvatars.push(avatarIndex);
+            }
+
+            gameState.currentSetupIndex++;
+
+            if (gameState.currentSetupIndex < gameState.numPlayers) {
+                showPlayerSetup();
+            } else {
+                // Todos los jugadores configurados, ir a resumen
+                hide('player-setup-screen');
+                show('summary-screen');
+                showSummary();
+            }
+        }
+
+        function previousPlayer() {
+            if (gameState.currentSetupIndex > 0) {
+                gameState.currentSetupIndex--;
+                showPlayerSetup();
+            } else {
+                // Si es el primer jugador, volver a config
+                hide('player-setup-screen');
+                show('config-screen');
+            }
+        }
+
+        function showSummary() {
+            const list = document.getElementById('summary-list');
+            list.innerHTML = '';
+
+            gameState.players.forEach((player, i) => {
+                const item = document.createElement('div');
+                item.className = 'summary-item';
+                item.innerHTML = `
+                    <div class="summary-avatar">${player.avatar}</div>
+                    <div class="summary-name">${player.name}</div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function backToPlayerSetup() {
+            gameState.currentSetupIndex = gameState.numPlayers - 1;
+            hide('summary-screen');
+            show('player-setup-screen');
+            showPlayerSetup();
+        }
+
+        function startGame() {
+            // Elegir palabra aleatoria de la lista actual
+            gameState.word = gameState.currentWordList[Math.floor(Math.random() * gameState.currentWordList.length)];
+            
+            // Seleccionar mentirosos aleatorios
+            const indices = Array.from({length: gameState.numPlayers}, (_, i) => i);
+            gameState.impostorIndices = [];
+            for (let i = 0; i < gameState.numImpostors; i++) {
+                const randomIndex = Math.floor(Math.random() * indices.length);
+                gameState.impostorIndices.push(indices[randomIndex]);
+                indices.splice(randomIndex, 1);
+            }
+
+            gameState.currentRevealIndex = 0;
+            saveGame();
+
+            hide('summary-screen');
+            show('reveal-screen');
+            showCurrentReveal();
+        }
+
+        function showCurrentReveal() {
+            const player = gameState.players[gameState.currentRevealIndex];
+            document.getElementById('current-reveal-name').textContent = player.name;
+            document.getElementById('player-avatar').textContent = player.avatar;
+            document.getElementById('reveal-btn').classList.remove('hidden');
+            document.getElementById('role-display').classList.add('hidden');
+        }
+
+        function revealRole() {
+            const isImpostor = gameState.impostorIndices.includes(gameState.currentRevealIndex);
+            const wordDisplay = document.getElementById('word-display');
+            
+            if (isImpostor) {
+                wordDisplay.textContent = '🐻 MENTIR🐻';
+                wordDisplay.classList.add('impostor');
+            } else {
+                wordDisplay.textContent = gameState.word;
+                wordDisplay.classList.remove('impostor');
+            }
+
+            document.getElementById('reveal-btn').classList.add('hidden');
+            document.getElementById('role-display').classList.remove('hidden');
+            saveGame();
+        }
+
+        function nextRevealPlayer() {
+            gameState.currentRevealIndex++;
+            saveGame();
+
+            if (gameState.currentRevealIndex < gameState.players.length) {
+                showCurrentReveal();
+            } else {
+                hide('reveal-screen');
+                show('timer-screen');
+                startTimer();
+            }
+        }
+
+        function toggleMusic() {
+            const music = document.getElementById('background-music');
+            const btn = document.getElementById('music-toggle-btn');
+            
+            if (music.paused) {
+                music.play().then(() => {
+                    btn.textContent = '🔇 Pausar Música';
+                    btn.style.background = '#dc3545';
+                }).catch(err => {
+                    console.log('Error al reproducir:', err);
+                    alert('No se pudo reproducir la música. Intenta de nuevo.');
+                });
+            } else {
+                music.pause();
+                btn.textContent = '🔊 Activar Música';
+                btn.style.background = '#28a745';
+            }
+        }
+
+        function startTimer() {
+            // No intentar autoplay, dejar que el usuario active manualmente
+            updateTimerDisplay();
+            gameState.timerInterval = setInterval(() => {
+                gameState.timerSeconds--;
+                saveGame();
+                updateTimerDisplay();
+
+                if (gameState.timerSeconds <= 0) {
+                    clearInterval(gameState.timerInterval);
+                    // Parar música
+                    const music = document.getElementById('background-music');
+                    music.pause();
+                    music.currentTime = 0;
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(gameState.timerSeconds / 60);
+            const seconds = gameState.timerSeconds % 60;
+            const display = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            const timerElement = document.getElementById('timer');
+            timerElement.textContent = display;
+
+            if (gameState.timerSeconds < 60) {
+                timerElement.classList.add('warning');
+            }
+        }
+
+        function endGame() {
+            if (gameState.timerInterval) {
+                clearInterval(gameState.timerInterval);
+            }
+            localStorage.removeItem('mentirosoGame');
+            hide('timer-screen');
+            show('end-screen');
+        }
+
+        function showImpostors() {
+            const list = document.getElementById('impostor-list');
+            list.innerHTML = '';
+
+            gameState.impostorIndices.forEach((index, i) => {
+                const player = gameState.players[index];
+                const item = document.createElement('div');
+                item.className = 'impostor-reveal-item';
+                item.style.animationDelay = `${i * 0.2}s`;
+                item.innerHTML = `
+                    <div class="impostor-reveal-avatar">${player.avatar}</div>
+                    <div class="impostor-reveal-name">${player.name}</div>
+                `;
+                list.appendChild(item);
+            });
+
+            hide('end-screen');
+            show('impostor-reveal-screen');
+        }
+
+        function replayWithSamePlayers() {
+            // Mantener jugadores pero resetear el resto
+            const savedPlayers = [...gameState.players];
+            const savedNumImpostors = gameState.numImpostors;
+            const savedWordList = [...gameState.currentWordList];
+            
+            gameState = {
+                currentWordList: savedWordList,
+                numPlayers: savedPlayers.length,
+                numImpostors: savedNumImpostors,
+                players: savedPlayers,
+                currentSetupIndex: 0,
+                selectedAvatars: savedPlayers.map(p => p.avatarIndex),
+                currentRevealIndex: 0,
+                word: '',
+                impostorIndices: [],
+                timerSeconds: 300,
+                timerInterval: null,
+                savedAt: null
+            };
+
+            // Nueva palabra y mentirosos
+            gameState.word = gameState.currentWordList[Math.floor(Math.random() * gameState.currentWordList.length)];
+            const indices = Array.from({length: gameState.numPlayers}, (_, i) => i);
+            gameState.impostorIndices = [];
+            for (let i = 0; i < gameState.numImpostors; i++) {
+                const randomIndex = Math.floor(Math.random() * indices.length);
+                gameState.impostorIndices.push(indices[randomIndex]);
+                indices.splice(randomIndex, 1);
+            }
+
+            saveGame();
+            hide('impostor-reveal-screen');
+            show('reveal-screen');
+            showCurrentReveal();
+        }
+
+        let editingPlayerIndex = null;
+        let tempEditedPlayers = [];
+
+        function editPlayers() {
+            tempEditedPlayers = JSON.parse(JSON.stringify(gameState.players));
+            hide('impostor-reveal-screen');
+            show('edit-players-screen');
+            renderEditPlayersList();
+        }
+
+        function renderEditPlayersList() {
+            const list = document.getElementById('edit-players-list');
+            list.innerHTML = '';
+
+            tempEditedPlayers.forEach((player, index) => {
+                const item = document.createElement('div');
+                item.className = 'edit-player-item';
+                item.innerHTML = `
+                    <div class="edit-player-row">
+                        <div class="edit-avatar-wrapper">
+                            <div class="edit-avatar" data-player-index="${index}">${player.avatar}</div>
+                        </div>
+                        <div class="edit-name-wrapper">
+                            <input type="text" 
+                                   class="edit-name-input" 
+                                   value="${player.name}" 
+                                   placeholder="Nombre del jugador"
+                                   data-player-index="${index}">
+                        </div>
+                    </div>
+                    <button class="delete-player-btn" data-player-index="${index}">🗑️ Eliminar Jugador</button>
+                `;
+                list.appendChild(item);
+            });
+
+            // Añadir event listeners DESPUÉS de crear los elementos
+            document.querySelectorAll('.edit-avatar').forEach(avatar => {
+                avatar.addEventListener('click', function() {
+                    const idx = parseInt(this.dataset.playerIndex);
+                    changeAvatar(idx);
+                });
+            });
+
+            document.querySelectorAll('.edit-name-input').forEach(input => {
+                input.addEventListener('input', function() {
+                    const idx = parseInt(this.dataset.playerIndex);
+                    tempEditedPlayers[idx].name = this.value;
+                });
+            });
+
+            document.querySelectorAll('.delete-player-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const idx = parseInt(this.dataset.playerIndex);
+                    deletePlayer(idx);
+                });
+            });
+        }
+
+        function deletePlayer(index) {
+            if (tempEditedPlayers.length <= 3) {
+                alert('Debe haber al menos 3 jugadores');
+                return;
+            }
+            
+            const playerName = tempEditedPlayers[index].name;
+            if (confirm(`¿Eliminar a ${playerName}?`)) {
+                // Eliminar jugador del array
+                tempEditedPlayers.splice(index, 1);
+                // Re-renderizar toda la lista
+                renderEditPlayersList();
+            }
+        }
+
+        function changeAvatar(playerIndex) {
+            editingPlayerIndex = playerIndex;
+            
+            // Crear modal para elegir avatar
+            const modal = document.createElement('div');
+            modal.className = 'avatar-picker-modal';
+            modal.onclick = (e) => {
+                if (e.target === modal) modal.remove();
+            };
+
+            const content = document.createElement('div');
+            content.className = 'avatar-picker-content';
+            content.onclick = (e) => e.stopPropagation();
+
+            const title = document.createElement('h3');
+            title.textContent = 'Elige nuevo avatar';
+            title.style.textAlign = 'center';
+            title.style.marginBottom = '15px';
+
+            const grid = document.createElement('div');
+            grid.className = 'avatar-picker-grid';
+
+            const usedAvatars = tempEditedPlayers
+                .filter((_, i) => i !== playerIndex)
+                .map(p => p.avatarIndex);
+
+            AVATARS.forEach((avatar, i) => {
+                const div = document.createElement('div');
+                div.className = 'avatar-option';
+                div.textContent = avatar;
+                div.dataset.index = i;
+
+                if (usedAvatars.includes(i)) {
+                    div.classList.add('disabled');
+                } else {
+                    div.onclick = () => {
+                        tempEditedPlayers[playerIndex].avatar = AVATARS[i];
+                        tempEditedPlayers[playerIndex].avatarIndex = i;
+                        renderEditPlayersList();
+                        modal.remove();
+                    };
+                }
+
+                grid.appendChild(div);
+            });
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'Cancelar';
+            cancelBtn.className = 'btn-secondary';
+            cancelBtn.style.marginTop = '15px';
+            cancelBtn.onclick = () => modal.remove();
+
+            content.appendChild(title);
+            content.appendChild(grid);
+            content.appendChild(cancelBtn);
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+        }
+
+        function addNewPlayer() {
+            if (tempEditedPlayers.length >= 15) {
+                alert('Máximo 15 jugadores');
+                return;
+            }
+
+            // Encontrar primer avatar disponible
+            const usedAvatars = tempEditedPlayers.map(p => p.avatarIndex);
+            let availableAvatar = 0;
+            for (let i = 0; i < AVATARS.length; i++) {
+                if (!usedAvatars.includes(i)) {
+                    availableAvatar = i;
+                    break;
+                }
+            }
+
+            tempEditedPlayers.push({
+                name: `Jugador ${tempEditedPlayers.length + 1}`,
+                avatar: AVATARS[availableAvatar],
+                avatarIndex: availableAvatar
+            });
+
+            renderEditPlayersList();
+        }
+
+        function cancelEdit() {
+            tempEditedPlayers = [];
+            hide('edit-players-screen');
+            show('impostor-reveal-screen');
+        }
+
+        function saveEditedPlayers() {
+            // Validar nombres
+            for (let i = 0; i < tempEditedPlayers.length; i++) {
+                if (!tempEditedPlayers[i].name.trim()) {
+                    alert(`El jugador ${i + 1} necesita un nombre`);
+                    return;
+                }
+            }
+
+            if (tempEditedPlayers.length < 3) {
+                alert('Debe haber al menos 3 jugadores');
+                return;
+            }
+
+            // Ajustar número de mentirosos si es necesario
+            if (gameState.numImpostors >= tempEditedPlayers.length) {
+                gameState.numImpostors = Math.max(1, Math.floor(tempEditedPlayers.length / 3));
+            }
+
+            // Actualizar estado
+            gameState.players = tempEditedPlayers;
+            gameState.numPlayers = tempEditedPlayers.length;
+            gameState.selectedAvatars = tempEditedPlayers.map(p => p.avatarIndex);
+
+            // Iniciar nuevo juego
+            gameState.word = gameState.currentWordList[Math.floor(Math.random() * gameState.currentWordList.length)];
+            const indices = Array.from({length: gameState.numPlayers}, (_, i) => i);
+            gameState.impostorIndices = [];
+            for (let i = 0; i < gameState.numImpostors; i++) {
+                const randomIndex = Math.floor(Math.random() * indices.length);
+                gameState.impostorIndices.push(indices[randomIndex]);
+                indices.splice(randomIndex, 1);
+            }
+
+            gameState.currentRevealIndex = 0;
+            tempEditedPlayers = [];
+            saveGame();
+
+            hide('edit-players-screen');
+            show('reveal-screen');
+            showCurrentReveal();
+        }
+
+        function cancelGameInProgress() {
+            if (confirm('¿Seguro que quieres cancelar esta partida?')) {
+                hide('reveal-screen');
+                hide('timer-screen');
+                show('summary-screen');
+                showSummary();
+            }
+        }
+
+        function resetGame() {
+            // Parar música si está sonando
+            const music = document.getElementById('background-music');
+            music.pause();
+            music.currentTime = 0;
+            
+            // Resetear botón de música
+            const btn = document.getElementById('music-toggle-btn');
+            if (btn) {
+                btn.textContent = '🔊 Activar Música';
+                btn.style.background = '#28a745';
+            }
+
+            gameState = {
+                currentWordList: WORDS,
+                numPlayers: 0,
+                numImpostors: 1,
+                players: [],
+                currentSetupIndex: 0,
+                selectedAvatars: [],
+                currentRevealIndex: 0,
+                word: '',
+                impostorIndices: [],
+                timerSeconds: 300,
+                timerInterval: null,
+                savedAt: null
+            };
+            localStorage.removeItem('mentirosoGame');
+            hide('end-screen');
+            hide('impostor-reveal-screen');
+            show('config-screen');
+        }
+
+        function show(screenId) {
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        function hide(screenId) {
+            document.getElementById(screenId).classList.add('hidden');
+        }
+    </script>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker registrado correctamente:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('Error al registrar Service Worker:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
