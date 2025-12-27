@@ -1,8 +1,9 @@
 const CACHE_NAME = 'mentiroso-v1';
+const BASE_PATH = '/MENTIR_';
 const urlsToCache = [
-  '/MENTIR_/',
-  '/MENTIR_/index.html',
-  '/MENTIR_/manifest.json'
+  BASE_PATH + '/',
+  BASE_PATH + '/index.html',
+  BASE_PATH + '/manifest.json'
 ];
 
 // Instalación del Service Worker
