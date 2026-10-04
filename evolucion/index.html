@@ -10,6 +10,7 @@
      Variables de color en :root para cambiar el tema fácilmente.
      ========================================================= */
   :root {
+    color-scheme: dark;  /* el juego tiene un único aspecto oscuro */
     --bg: #0b1622;
     --panel: #121f2e;
     --panel-2: #182a3d;
@@ -1247,7 +1248,18 @@ function buildUI() {
   $('add-f').onclick = () => addSpecimen('F');
   $('evolve').onclick = evolve;
   $('m-close').onclick = closeModal;
-  $('reset').onclick = () => { if (confirm('¿Empezar una partida nueva? Se perderá la colonia actual.')) restart(); };
+  // Confirmación en dos pulsaciones (sin confirm(), que algunos visores bloquean)
+  $('reset').onclick = () => {
+    const btn = $('reset');
+    if (btn.dataset.armed) { clearTimeout(btn.timer); restart(); }
+    else {
+      btn.dataset.armed = '1';
+      btn.textContent = '⚠️ Pulsa otra vez para borrar la colonia';
+      btn.timer = setTimeout(() => { delete btn.dataset.armed; btn.textContent = '↺ Nueva partida'; }, 3000);
+      return;
+    }
+    delete btn.dataset.armed; btn.textContent = '↺ Nueva partida';
+  };
 }
 
 function buyUpgrade(key) {
