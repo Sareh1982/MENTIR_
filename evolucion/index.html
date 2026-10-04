@@ -22,6 +22,7 @@
     --female: #f687b3;
     --danger: #fc8181;
     --rad: #d6f35a;      /* radiación */
+    --poison: #b794f4;   /* veneno */
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -119,6 +120,10 @@
   .btn.female { border-color: var(--female); color: var(--female); }
   .btn.rad { border-color: var(--rad); color: var(--rad); }
   .btn.rad.on { background: var(--rad); color: #1f2600; }
+  .btn.poison { border-color: var(--poison); color: var(--poison); }
+  .forecast { margin-top: 8px; padding: 7px 9px; border-radius: 8px; background: #0d1824; font-size: 12px; line-height: 1.4; }
+  .forecast.bad { color: var(--danger); }
+  .forecast.ok { color: var(--accent); }
 
   /* Lista de depredadores y mejoras */
   .item { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
@@ -229,6 +234,7 @@
     <div class="bar"><div id="pop-bar"></div></div>
     <div class="chips" id="pop-chips"></div>
     <div class="hint" id="pop-hint"></div>
+    <div class="forecast" id="forecast">🔮 Calculando pronóstico…</div>
     <div class="row" style="margin-top:10px">
       <button class="btn male" id="add-m">+ ♂ Macho</button>
       <button class="btn female" id="add-f">+ ♀ Hembra</button>
@@ -250,6 +256,11 @@
       <span class="name">☢️ Inyección de radiación</span>
       <button class="btn rad" id="rad-btn"></button>
       <span class="desc">Elige un punto del estanque: la mitad de las células de la zona muere y las supervivientes quedan estériles.</span>
+    </div>
+    <div class="item">
+      <span class="name">☣️ Veneno <small id="bait-count" style="color:var(--muted)"></small></span>
+      <button class="btn poison" id="poison-btn"></button>
+      <span class="desc">Esparce cebos envenenados durante 6 h. Ojo: las supervivientes transmiten su resistencia a las crías; si abusas, el veneno dejará de funcionar.</span>
     </div>
   </section>
 
@@ -344,6 +355,12 @@ const EVOLVE_AT = 50;         // ADN para pasar a la Fase 2
 const ADD_COST = 10;          // ADN por añadir un ejemplar
 const RAD_COST = 50;          // ADN por inyección de radiación
 const RAD_RADIUS = 90;        // px
+const POISON_COST = 30;       // ADN por tanda de veneno
+const POISON_BAITS = 14;      // cebos por tanda
+const POISON_LIFE = 6 * 60;   // los cebos se degradan en 6 h
+const POISON_LETHAL = 0.8;    // probabilidad de morir con resistencia 0
+const FORECAST_SPAN = 3 * DAY;  // horizonte del pronóstico
+const FORECAST_RUNS = 3;        // simulaciones por pronóstico (el azar cuenta)
 const MAX_OFFLINE = 30 * DAY; // tope de tiempo simulado al volver (por rendimiento)
 const MAX_LEVEL = 8;
 
@@ -410,10 +427,11 @@ function newState() {
     cells: [],
     predators: [],
     foods: [],
+    baits: [],                 // cebos envenenados {x, y, expires}
     foodAcc: 0,                // fracción acumulada de comida por aparecer
     nextId: 1,
     selected: null,
-    stats: { births: 0, food: 0, maxGen: 1, deaths: { hambre: 0, vejez: 0, depredador: 0, radiacion: 0 } },
+    stats: { births: 0, food: 0, maxGen: 1, deaths: { hambre: 0, vejez: 0, depredador: 0, radiacion: 0, veneno: 0 } },
     over: null,                // null | 'plaga' | 'extincion'
     savedAt: Date.now(),
   };
@@ -427,7 +445,13 @@ function save() {
 function load() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    // Compatibilidad con partidas guardadas antes de añadir el veneno
+    s.baits = s.baits || [];
+    s.stats.deaths.veneno = s.stats.deaths.veneno || 0;
+    for (const c of s.cells) c.resist = c.resist || 0;
+    return s;
   } catch (e) { return null; }
 }
 
@@ -445,6 +469,7 @@ function makeCell(sex, x, y, gen = 1) {
     age: 0, eaten: 0, energy: 70, digest: 0,
     breeds: 0, cooldown: 0, oldFor: 0,
     sterile: false, gen,
+    resist: rand(0, 0.3),      // resistencia al veneno (0..0.95), se hereda
   };
 }
 
@@ -514,6 +539,8 @@ function mate(female, male, live) {
   for (let i = 0; i < n; i++) {
     const b = makeCell(null, clamp(female.x + rand(-20, 20), 10, W - 10), clamp(female.y + rand(-20, 20), 10, H - 10), gen);
     b.energy = 60;
+    // Herencia: media de los padres + una pequeña mutación al azar
+    b.resist = clamp((female.resist + male.resist) / 2 + rand(-0.08, 0.08), 0, 0.95);
     babies.push(b);
   }
   state.cells.push(...babies);
@@ -532,7 +559,7 @@ function kill(c, cause, live) {
   state.cells.splice(i, 1);
   state.stats.deaths[cause]++;
   if (state.selected === c.id) state.selected = null;
-  if (live) burst(c.x, c.y, cause === 'radiacion' ? '#d6f35a' : '#a0aec0', 10);
+  if (live) burst(c.x, c.y, cause === 'radiacion' ? '#d6f35a' : cause === 'veneno' ? '#b794f4' : '#a0aec0', 10);
 }
 
 /* Fin de partida: extinción o plaga (población descontrolada). */
@@ -581,7 +608,8 @@ function cellDirection(c) {
 
   // d) Buscar la comida más cercana dentro de su visión (si no está digiriendo)
   let food = null, fd = V;
-  if (c.digest <= 0) for (const f of state.foods) { const d = dist(c, f); if (d < fd) { fd = d; food = f; } }
+  // (los cebos envenenados parecen comida: no los distinguen)
+  if (c.digest <= 0) for (const f of [...state.foods, ...state.baits]) { const d = dist(c, f); if (d < fd) { fd = d; food = f; } }
   if (food) return { x: (food.x - c.x) / (fd || 1), y: (food.y - c.y) / (fd || 1), s: 0.85 };
 
   // e) Explorar: rumbo que cambia poco a poco y gira hacia el centro en los bordes
@@ -647,6 +675,15 @@ function liveStep(dt) {
     if (cause) kill(c, cause, true);
   }
 
+  // Cebos envenenados: caducan y matan (o enferman) a quien se los coma
+  state.baits = state.baits.filter(b => b.expires > state.clock);
+  for (const c of [...state.cells]) {
+    if (c.digest > 0) continue;
+    const r = radiusOf(c);
+    const i = state.baits.findIndex(b => Math.hypot(b.x - c.x, b.y - c.y) < r + 4);
+    if (i >= 0) { state.baits.splice(i, 1); c.digest = DIGEST; poison(c, true); }
+  }
+
   // Apareamiento por contacto
   for (const f of state.cells) {
     if (f.sex !== 'F' || !canBreed(f)) continue;
@@ -691,6 +728,7 @@ function liveStep(dt) {
 
 /* Radiación: mitad de la zona muere, el resto queda estéril. */
 function irradiate(x, y) {
+  forecastSoon();
   if (state.dna < RAD_COST || state.over) return;
   state.dna -= RAD_COST;
   for (const c of [...state.cells]) {
@@ -702,6 +740,29 @@ function irradiate(x, y) {
   checkOver();
   setAiming(false);
   updateUI();
+}
+
+/* Veneno: cebos repartidos por el estanque que las células comen sin saberlo. */
+function spreadPoison() {
+  forecastSoon();
+  if (state.dna < POISON_COST || state.over) return;
+  state.dna -= POISON_COST;
+  for (let i = 0; i < POISON_BAITS; i++) {
+    state.baits.push({ x: rand(20, W - 20), y: rand(20, H - 20), expires: state.clock + POISON_LIFE, seed: rand(0, 6.28) });
+  }
+  updateUI();
+}
+
+/* Una célula se come un cebo: muere según su resistencia. Si sobrevive, enferma
+   pero se vuelve más tolerante y lo transmite a sus crías (licencia del juego:
+   en la realidad solo actuaría la selección natural, que es más lenta). */
+function poison(c, live) {
+  if (Math.random() < POISON_LETHAL * (1 - c.resist)) kill(c, 'veneno', live);
+  else {
+    c.energy -= 35;
+    c.resist = Math.min(0.95, c.resist + 0.15);
+    if (live) floater(c.x, c.y - 14, '🛡️ resiste', '#b794f4');
+  }
 }
 
 // ---------- 5. AVANCE RÁPIDO ----------
@@ -741,6 +802,17 @@ function fastForward(minutes) {
       if (a > 0) { feed(c, a); c.digest = 0; } // en este modelo la digestión ya va en 'want'
     });
     food -= demand * scale;
+
+    // 1b) Veneno: la probabilidad de topar con un cebo depende de cuántos hay
+    if (state.baits.length) {
+      state.baits = state.baits.filter(b => b.expires > state.clock);
+      for (const c of [...state.cells]) {
+        const nb = state.baits.length;
+        if (!nb) break;
+        const pBait = STEP / DIGEST * nb / (nb + food + 4);
+        if (Math.random() < pBait) { state.baits.splice(Math.floor(Math.random() * nb), 1); poison(c, false); }
+      }
+    }
 
     // 2) Vida y muerte
     for (const c of [...state.cells]) {
@@ -788,6 +860,7 @@ function fastForward(minutes) {
   state.foods = [];
   for (let i = 0; i < Math.floor(food); i++) spawnFood();
   for (const c of state.cells) { c.x = rand(30, W - 30); c.y = rand(30, H - 30); c.vx = c.vy = 0; }
+  for (const b of state.baits) { b.x = rand(20, W - 20); b.y = rand(20, H - 20); }
   for (const p of state.predators) { if (PREDATORS[p.type].speed > 0) { p.x = rand(30, W - 30); p.y = rand(30, H - 30); } }
 
   const d = state.stats.deaths;
@@ -795,16 +868,60 @@ function fastForward(minutes) {
     minutes: t, samples, peak,
     popBefore: before.pop, popAfter: state.cells.length,
     births: state.stats.births - before.births,
-    deaths: {
-      hambre: d.hambre - before.deaths.hambre, vejez: d.vejez - before.deaths.vejez,
-      depredador: d.depredador - before.deaths.depredador, radiacion: d.radiacion - before.deaths.radiacion,
-    },
+    deaths: Object.fromEntries(Object.keys(d).map(k => [k, d[k] - (before.deaths[k] || 0)])),
     dna: Math.floor(state.dna) - Math.floor(before.dna),
     maxGen: state.stats.maxGen,
   };
 }
 
+/* Pronóstico: simula en secreto los próximos días sobre COPIAS del estado
+   (varias veces, porque hay azar) y resume qué pasaría si no haces nada. */
+function forecast() {
+  if (state.over) return null;
+  const real = state;
+  const results = [];
+  try {
+    for (let i = 0; i < FORECAST_RUNS; i++) {
+      state = JSON.parse(JSON.stringify(real));
+      const rep = fastForward(FORECAST_SPAN);
+      results.push({ over: state.over, at: rep.minutes, pop: state.cells.length });
+    }
+  } finally {
+    state = real; // pase lo que pase, recuperar el estado real
+  }
+  const count = k => results.filter(r => r.over === k).length;
+  const kind = count('plaga') >= count('extincion') ? 'plaga' : 'extincion';
+  const hits = results.filter(r => r.over === kind).sort((a, b) => a.at - b.at);
+  if (hits.length * 2 > FORECAST_RUNS) {
+    return { kind, at: hits[Math.floor(hits.length / 2)].at, n: hits.length };
+  }
+  const pops = results.map(r => r.pop).sort((a, b) => a - b);
+  return { kind: 'estable', pop: pops[Math.floor(pops.length / 2)], risk: count('plaga') + count('extincion') };
+}
+
+/* Pide recalcular el pronóstico en el siguiente medio segundo (tras una acción). */
+function forecastSoon() { forecastTimer = Math.max(forecastTimer, 5.5); }
+
+function updateForecast() {
+  const f = forecast();
+  const el = $('forecast');
+  if (!f) { el.textContent = ''; return; }
+  const runs = `${f.n}/${FORECAST_RUNS} simulaciones`;
+  if (f.kind === 'plaga') {
+    el.className = 'forecast bad';
+    el.textContent = `🔮 Si no haces nada: 🐀 plaga en ~${fmtDur(f.at)} (${runs}).`;
+  } else if (f.kind === 'extincion') {
+    el.className = 'forecast bad';
+    el.textContent = `🔮 Si no haces nada: 💀 extinción en ~${fmtDur(f.at)} (${runs}).`;
+  } else {
+    el.className = 'forecast ok';
+    el.textContent = `🔮 Próximos ${fmtDur(FORECAST_SPAN)}: colonia estable (~${f.pop} células)` +
+      (f.risk ? ` · riesgo en ${f.risk}/${FORECAST_RUNS} simulaciones.` : '.');
+  }
+}
+
 function timeJump(minutes) {
+  forecastSoon();
   if (state.over) return;
   setAiming(false);
   const rep = fastForward(minutes);
@@ -814,6 +931,7 @@ function timeJump(minutes) {
 
 /* Tiempo pasado fuera de la página (o con la pestaña en segundo plano). */
 function catchUp(realMs, title) {
+  forecastSoon();
   if (state.over || state.speed === 0) return;
   const minutes = Math.min(MAX_OFFLINE, Math.floor(realMs / 1000 * MIN_PER_SEC));
   if (minutes < 1) return;
@@ -886,6 +1004,19 @@ function drawFood(f) {
     ctx.fillStyle = '#e53e3e';
     ctx.beginPath(); ctx.arc(f.x, f.y, r, 0, 6.28); ctx.fill();
   }
+}
+
+/* Cebo envenenado: parece comida, pero violeta y con brillo inquietante. */
+function drawBait(b) {
+  const r = 5 + Math.sin(t * 3 + b.seed) * 0.6;
+  const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, r * 2.4);
+  g.addColorStop(0, 'rgba(214, 188, 250, .9)');
+  g.addColorStop(0.45, 'rgba(128, 90, 213, .5)');
+  g.addColorStop(1, 'rgba(128, 90, 213, 0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(b.x, b.y, r * 2.4, 0, 6.28); ctx.fill();
+  ctx.fillStyle = '#44337a';
+  ctx.beginPath(); ctx.arc(b.x, b.y, r * .55, 0, 6.28); ctx.fill();
 }
 
 /* Colores según sexo; las viejas se ven apagadas. */
@@ -1013,6 +1144,7 @@ function render(dt) {
   t += dt;
   drawBackground(dt);
   state.foods.forEach(drawFood);
+  state.baits.forEach(drawBait);
   state.predators.filter(p => p.type === 'hidra').forEach(drawPredator);
   state.cells.forEach(drawCell);
   state.predators.filter(p => p.type !== 'hidra').forEach(drawPredator);
@@ -1108,6 +1240,7 @@ function buildUI() {
     el.querySelector('button').onclick = () => releasePredator(key);
   }
   $('rad-btn').onclick = () => setAiming(!input.aiming);
+  $('poison-btn').onclick = spreadPoison;
   document.querySelectorAll('#speeds button').forEach(b => b.onclick = () => setSpeed(+b.dataset.speed));
   document.querySelectorAll('#jumps button').forEach(b => b.onclick = () => timeJump(+b.dataset.min));
   $('add-m').onclick = () => addSpecimen('M');
@@ -1118,6 +1251,7 @@ function buildUI() {
 }
 
 function buyUpgrade(key) {
+  forecastSoon();
   if (state.levels[key] >= MAX_LEVEL || state.dna < upgradeCost(key)) return;
   state.dna -= upgradeCost(key);
   state.levels[key]++;
@@ -1125,6 +1259,7 @@ function buyUpgrade(key) {
 }
 
 function addSpecimen(sex) {
+  forecastSoon();
   if (state.dna < ADD_COST || state.over) return;
   state.dna -= ADD_COST;
   const c = makeCell(sex);
@@ -1137,6 +1272,7 @@ function addSpecimen(sex) {
 }
 
 function releasePredator(key) {
+  forecastSoon();
   const P = PREDATORS[key];
   if (state.dna < P.cost || state.over) return;
   state.dna -= P.cost;
@@ -1162,6 +1298,7 @@ function setSpeed(s) {
 }
 
 function evolve() {
+  forecastSoon();
   if (state.phase !== 1 || state.dna < EVOLVE_AT) return;
   state.phase = 2;
   state.dna -= EVOLVE_AT;
@@ -1199,6 +1336,7 @@ function updateUI() {
     <span>💪 adultas ${count(c => stageOf(c) === 'adulta')}</span>
     <span>👴 viejas ${count(c => stageOf(c) === 'vieja')}</span>
     <span>☢ estériles ${count(c => c.sterile)}</span>
+    <span>🛡️ resistencia ${n ? Math.round(cells.reduce((a, c) => a + c.resist, 0) / n * 100) : 0}%</span>
     <span>🧬 gen. máx ${state.stats.maxGen}</span>
     <span>☠️ depredadores ${state.predators.length}</span>`;
   const sexes = new Set(cells.map(c => c.sex));
@@ -1236,6 +1374,9 @@ function updateUI() {
   }
   $('rad-btn').textContent = input.aiming ? 'Cancelar' : `🧬 ${RAD_COST}`;
   $('rad-btn').disabled = (dna < RAD_COST && !input.aiming) || !!state.over;
+  $('poison-btn').textContent = `🧬 ${POISON_COST}`;
+  $('poison-btn').disabled = dna < POISON_COST || !!state.over;
+  $('bait-count').textContent = state.baits.length ? `×${state.baits.length} cebos` : '';
   document.querySelectorAll('#jumps button').forEach(b => b.disabled = !!state.over);
 
   // Ficha de la célula seleccionada
@@ -1252,6 +1393,7 @@ function updateUI() {
         <span>Crecimiento</span><b>${Math.min(ADULT_AT, Math.floor(sel.eaten))} / ${ADULT_AT}</b>
         <div class="mini-bar"><div style="width:${Math.min(100, sel.eaten / ADULT_AT * 100)}%"></div></div>
         <span>Camadas</span><b>${sel.breeds} / ${MAX_BREEDS}</b>
+        <span>Resistencia al veneno</span><b>${Math.round(sel.resist * 100)}%</b>
         <span>Energía</span><b>${Math.round(sel.energy)}%</b>
         <div class="mini-bar"><div style="width:${sel.energy}%;background:${sel.energy < 30 ? 'var(--danger)' : 'var(--accent)'}"></div></div>
       </div>`;
@@ -1274,7 +1416,7 @@ function showReport(title, sub, rep) {
   $('m-sub').textContent = sub;
   $('m-alert').innerHTML = state.over ? overAlert() : '';
   const d = rep.deaths;
-  const totalDeaths = d.hambre + d.vejez + d.depredador + d.radiacion;
+  const totalDeaths = Object.values(d).reduce((a, b) => a + b, 0);
   $('m-stats').innerHTML = `
     <div>Población<b>${rep.popBefore} → ${rep.popAfter}</b></div>
     <div>Pico<b>${rep.peak}</b></div>
@@ -1283,6 +1425,7 @@ function showReport(title, sub, rep) {
     <div>🍽️ Hambre<b>${d.hambre}</b></div>
     <div>👴 Vejez<b>${d.vejez}</b></div>
     <div>☠️ Depredadores<b>${d.depredador}</b></div>
+    <div>☣️ Veneno<b>${d.veneno}</b></div>
     <div>🧬 ADN ganado<b>+${rep.dna}</b></div>
     <div>Generación máx.<b>${rep.maxGen}</b></div>`;
   $('m-chart-wrap').classList.remove('hidden');
@@ -1310,7 +1453,8 @@ function showGameOver() {
     <div>🍽️ Hambre<b>${d.hambre}</b></div>
     <div>👴 Vejez<b>${d.vejez}</b></div>
     <div>☠️ Depredadores<b>${d.depredador}</b></div>
-    <div>☢️ Radiación<b>${d.radiacion}</b></div>`;
+    <div>☢️ Radiación<b>${d.radiacion}</b></div>
+    <div>☣️ Veneno<b>${d.veneno}</b></div>`;
   $('m-chart-wrap').classList.add('hidden');
   $('m-close').textContent = 'Nueva partida';
   $('modal').classList.remove('hidden');
@@ -1463,6 +1607,7 @@ function start(isNew) {
 let last = performance.now();
 let lastReal = Date.now();
 let uiTimer = 0, saveTimer = 0;
+let forecastTimer = 5; // primer pronóstico ~1 s después de arrancar
 
 function loop(now) {
   const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
@@ -1482,6 +1627,8 @@ function loop(now) {
 
   uiTimer += dt; saveTimer += dt;
   if (uiTimer > 0.25) { uiTimer = 0; updateUI(); }
+  forecastTimer += dt;
+  if (forecastTimer > 6) { forecastTimer = 0; updateForecast(); }
   if (saveTimer > 5) { saveTimer = 0; save(); }
   requestAnimationFrame(loop);
 }
@@ -1504,7 +1651,7 @@ if (saved) {
 requestAnimationFrame(loop);
 
 // Acceso desde la consola (depuración / trampas 😉)
-window.evo = { get state() { return state; }, fastForward, timeJump, catchUp, irradiate, releasePredator, addSpecimen, updateUI, save };
+window.evo = { get state() { return state; }, fastForward, timeJump, catchUp, irradiate, releasePredator, addSpecimen, spreadPoison, forecast, updateUI, save };
 </script>
 </body>
 </html>
