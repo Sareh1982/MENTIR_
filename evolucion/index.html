@@ -16,13 +16,15 @@
     --border: #24394f;
     --text: #e6eef6;
     --muted: #8aa0b6;
-    --accent: #4fd1c5;   /* turquesa: color del ADN */
-    --accent-2: #f6ad55; /* naranja: botón de evolución */
+    --accent: #4fd1c5;   /* turquesa: ADN */
+    --accent-2: #f6ad55; /* naranja: evolución */
+    --male: #63b3ed;
+    --female: #f687b3;
     --danger: #fc8181;
+    --rad: #d6f35a;      /* radiación */
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
   html, body { height: 100%; }
 
   body {
@@ -34,178 +36,145 @@
   }
 
   /* ---------- Zona de juego (canvas) ---------- */
-  #game-area {
-    position: relative;
-    flex: 1;
-    min-width: 0;
-  }
+  #game-area { position: relative; flex: 1; min-width: 0; }
+  #game { display: block; width: 100%; height: 100%; cursor: pointer; touch-action: none; }
+  #game.aiming { cursor: crosshair; }
 
-  #game {
-    display: block;
-    width: 100%;
-    height: 100%;
-    cursor: crosshair;
-    touch-action: none; /* evita el scroll al arrastrar en móvil */
-  }
-
-  /* Mensaje grande que aparece al cambiar de fase */
-  #banner {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  /* Reloj del juego sobre el canvas */
+  #clock {
+    position: absolute; top: 12px; left: 12px;
+    background: rgba(0, 0, 0, .45);
+    padding: 6px 12px; border-radius: 10px;
+    font-size: 14px; font-variant-numeric: tabular-nums;
     pointer-events: none;
-    opacity: 0;
-    transition: opacity .6s;
+  }
+  #clock small { color: var(--muted); }
+
+  /* Aviso de modo radiación */
+  #aim-hint {
+    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(0, 0, 0, .6); color: var(--rad);
+    padding: 6px 14px; border-radius: 999px; font-size: 13px;
+    pointer-events: none;
+  }
+
+  /* Mensaje grande temporal */
+  #banner {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none; opacity: 0; transition: opacity .6s;
   }
   #banner.show { opacity: 1; }
   #banner div {
-    background: rgba(0, 0, 0, .55);
-    padding: 18px 28px;
-    border-radius: 14px;
-    font-size: clamp(18px, 3vw, 30px);
-    font-weight: 700;
-    text-align: center;
+    background: rgba(0, 0, 0, .55); padding: 18px 28px; border-radius: 14px;
+    font-size: clamp(18px, 3vw, 30px); font-weight: 700; text-align: center;
   }
   #banner small { display: block; font-size: 14px; font-weight: 400; color: var(--muted); margin-top: 6px; }
 
   /* ---------- Panel lateral ---------- */
   #panel {
-    width: 300px;
-    flex-shrink: 0;
-    background: var(--panel);
-    border-left: 1px solid var(--border);
-    padding: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
+    width: 320px; flex-shrink: 0;
+    background: var(--panel); border-left: 1px solid var(--border);
+    padding: 16px; display: flex; flex-direction: column; gap: 12px;
     overflow-y: auto;
   }
-
-  h1 { font-size: 20px; }
+  h1 { font-size: 19px; }
   .phase {
-    display: inline-block;
-    margin-top: 4px;
-    font-size: 12px;
-    padding: 3px 10px;
-    border-radius: 999px;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    color: var(--muted);
+    display: inline-block; margin-top: 4px; font-size: 12px; padding: 3px 10px;
+    border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); color: var(--muted);
   }
+  .card { background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+  .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 8px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
 
-  .card {
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 12px;
-  }
-
-  /* Contador de ADN */
-  .dna-count {
-    font-size: 34px;
-    font-weight: 800;
-    color: var(--accent);
-    font-variant-numeric: tabular-nums;
-  }
+  .dna-count { font-size: 30px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
   .dna-count span { font-size: 14px; color: var(--muted); font-weight: 500; }
-  .bar {
-    height: 8px;
-    background: #0d1824;
-    border-radius: 999px;
-    overflow: hidden;
-    margin-top: 8px;
-  }
-  .bar > div {
-    height: 100%;
-    width: 0;
-    background: linear-gradient(90deg, var(--accent), #81e6d9);
-    transition: width .25s;
-  }
-  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .bar { height: 8px; background: #0d1824; border-radius: 999px; overflow: hidden; margin-top: 8px; }
+  .bar > div { height: 100%; width: 0; background: var(--accent); transition: width .25s, background .25s; }
 
-  /* Tarjetas de mejora */
-  .section-title { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-  .upgrade {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center;
-    gap: 6px 10px;
-  }
-  .upgrade + .upgrade { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-  .upgrade .name { font-weight: 600; }
-  .upgrade .desc { font-size: 12px; color: var(--muted); grid-column: 1 / -1; }
-  .pips { display: flex; gap: 3px; grid-column: 1 / -1; }
-  .pips i {
-    flex: 1;
-    height: 5px;
-    border-radius: 3px;
-    background: #0d1824;
-  }
-  .pips i.on { background: var(--accent); }
+  /* Población */
+  .pop-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .pop-num { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .pop-num span { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; font-size: 12px; }
+  .chips span { background: #0d1824; border-radius: 6px; padding: 3px 7px; font-variant-numeric: tabular-nums; }
+  .m { color: var(--male); } .f { color: var(--female); }
 
   button {
-    font: inherit;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
+    font: inherit; border: none; border-radius: 8px; cursor: pointer;
     transition: transform .08s, filter .15s, opacity .15s;
   }
   button:active:not(:disabled) { transform: scale(.96); }
   button:disabled { opacity: .4; cursor: not-allowed; }
+  button:hover:not(:disabled) { filter: brightness(1.12); }
 
-  .buy {
-    background: var(--accent);
-    color: #062621;
-    font-weight: 700;
-    font-size: 13px;
-    padding: 7px 12px;
-    white-space: nowrap;
+  .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .row > button { flex: 1; }
+  .btn {
+    background: #0d1824; color: var(--text); border: 1px solid var(--border);
+    padding: 7px 8px; font-size: 13px; font-weight: 600; white-space: nowrap;
   }
-  .buy:hover:not(:disabled) { filter: brightness(1.1); }
+  .btn.on { background: var(--accent); color: #062621; border-color: var(--accent); }
+  .btn.male { border-color: var(--male); color: var(--male); }
+  .btn.female { border-color: var(--female); color: var(--female); }
+  .btn.rad { border-color: var(--rad); color: var(--rad); }
+  .btn.rad.on { background: var(--rad); color: #1f2600; }
+
+  /* Lista de depredadores y mejoras */
+  .item { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
+  .item + .item { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .item .name { font-weight: 600; font-size: 14px; }
+  .item .desc { font-size: 12px; color: var(--muted); grid-column: 1 / -1; line-height: 1.35; }
+  .buy { background: var(--accent); color: #062621; font-weight: 700; font-size: 13px; padding: 6px 11px; white-space: nowrap; }
+  .pips { display: flex; gap: 3px; grid-column: 1 / -1; }
+  .pips i { flex: 1; height: 5px; border-radius: 3px; background: #0d1824; }
+  .pips i.on { background: var(--accent); }
 
   #evolve {
-    width: 100%;
-    padding: 14px;
-    font-size: 15px;
-    font-weight: 800;
-    color: #2a1600;
+    width: 100%; padding: 13px; font-size: 15px; font-weight: 800; color: #2a1600;
     background: linear-gradient(135deg, var(--accent-2), #fbd38d);
-    box-shadow: 0 0 0 0 rgba(246, 173, 85, .7);
     animation: pulse 1.6s infinite;
   }
   @keyframes pulse {
-    70%  { box-shadow: 0 0 0 12px rgba(246, 173, 85, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(246, 173, 85, .7); }
+    70% { box-shadow: 0 0 0 12px rgba(246, 173, 85, 0); }
     100% { box-shadow: 0 0 0 0 rgba(246, 173, 85, 0); }
   }
   .hidden { display: none !important; }
 
-  .stats { font-size: 13px; display: grid; grid-template-columns: 1fr auto; gap: 4px; }
-  .stats b { font-variant-numeric: tabular-nums; }
+  .kv { font-size: 13px; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; }
+  .kv b { text-align: right; font-variant-numeric: tabular-nums; }
+  .mini-bar { height: 5px; background: #0d1824; border-radius: 3px; overflow: hidden; margin-top: 2px; grid-column: 1 / -1; }
+  .mini-bar div { height: 100%; background: var(--accent); }
 
   .controls { font-size: 12px; color: var(--muted); line-height: 1.6; }
-  kbd {
-    background: #0d1824;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 0 5px;
-    font-size: 11px;
-  }
+  kbd { background: #0d1824; border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; font-size: 11px; }
+  .secondary { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 8px; width: 100%; font-size: 13px; }
 
-  .secondary {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 8px;
-    width: 100%;
+  /* ---------- Ventana modal (informe de salto / fin de partida) ---------- */
+  .modal {
+    position: fixed; inset: 0; background: rgba(0, 0, 0, .6);
+    display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 10;
   }
+  .modal-box {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
+    padding: 20px; width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto;
+  }
+  .modal-box h2 { font-size: 20px; }
+  .modal-box .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .alert { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-weight: 600; font-size: 14px; }
+  .alert.bad { background: rgba(252, 129, 129, .15); color: var(--danger); border: 1px solid rgba(252, 129, 129, .4); }
+  .m-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-top: 14px; }
+  .m-stats div { background: var(--panel-2); border-radius: 10px; padding: 8px 10px; font-size: 12px; color: var(--muted); }
+  .m-stats b { display: block; font-size: 18px; color: var(--text); font-variant-numeric: tabular-nums; }
+  .chart-title { margin-top: 16px; font-size: 13px; font-weight: 600; }
+  #m-chart { width: 100%; height: 180px; display: block; margin-top: 6px; }
+  #m-close { margin-top: 16px; width: 100%; padding: 12px; background: var(--accent); color: #062621; font-weight: 800; }
 
-  /* En pantallas estrechas el panel pasa debajo del canvas */
   @media (max-width: 760px) {
     body { flex-direction: column; overflow: auto; }
     #game-area { height: 60vh; flex: none; }
-    #panel { width: 100%; border-left: none; border-top: 1px solid var(--border); padding: 16px; }
+    #panel { width: 100%; border-left: none; border-top: 1px solid var(--border); }
   }
 </style>
 </head>
@@ -214,6 +183,8 @@
 <!-- ===================== ZONA DE JUEGO ===================== -->
 <main id="game-area">
   <canvas id="game"></canvas>
+  <div id="clock"></div>
+  <div id="aim-hint" class="hidden">☢️ Haz clic en el estanque para inyectar radiación · <kbd>Esc</kbd> cancela</div>
   <div id="banner"><div id="banner-text"></div></div>
 </main>
 
@@ -221,670 +192,1319 @@
 <aside id="panel">
   <header>
     <h1>🧬 Simulador de Evolución</h1>
-    <span class="phase" id="phase-label">Fase 1 · Célula</span>
+    <span class="phase" id="phase-label"></span>
   </header>
 
-  <!-- Puntos de ADN y progreso hacia la siguiente fase -->
+  <!-- Velocidad del tiempo en directo -->
   <section class="card">
-    <div class="dna-count" id="dna">0 <span>ADN</span></div>
-    <div class="bar"><div id="progress"></div></div>
-    <div class="hint" id="goal-hint">Reúne 50 ADN para evolucionar</div>
+    <div class="section-title">Tiempo</div>
+    <div class="row" id="speeds">
+      <button class="btn" data-speed="0">⏸️</button>
+      <button class="btn" data-speed="1">x1</button>
+      <button class="btn" data-speed="5">x5</button>
+      <button class="btn" data-speed="20">x20</button>
+    </div>
+    <div class="hint">⏱️ 1 hora real = 1 día de juego. El tiempo sigue corriendo aunque cierres la página (salvo en pausa).</div>
   </section>
 
-  <!-- Botón de evolución: solo aparece al llegar a 50 ADN -->
+  <!-- Viaje en el tiempo: simula de golpe un periodo y muestra un informe -->
+  <section class="card">
+    <div class="section-title">⏩ Saltar al futuro</div>
+    <div class="row" id="jumps">
+      <button class="btn" data-min="60">+1 h</button>
+      <button class="btn" data-min="360">+6 h</button>
+      <button class="btn" data-min="1440">+1 día</button>
+      <button class="btn" data-min="4320">+3 días</button>
+      <button class="btn" data-min="10080">+1 sem</button>
+    </div>
+    <div class="hint">Una célula vive unos 2 días. En una semana pueden pasar muchas generaciones… o ninguna.</div>
+  </section>
+
+  <!-- Población -->
+  <section class="card">
+    <div class="pop-head">
+      <div class="section-title" style="margin:0">Población</div>
+      <div class="pop-num" id="pop">1 <span>/ 150</span></div>
+    </div>
+    <div class="bar"><div id="pop-bar"></div></div>
+    <div class="chips" id="pop-chips"></div>
+    <div class="hint" id="pop-hint"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn male" id="add-m">+ ♂ Macho</button>
+      <button class="btn female" id="add-f">+ ♀ Hembra</button>
+    </div>
+  </section>
+
+  <!-- ADN -->
+  <section class="card">
+    <div class="dna-count" id="dna">0 <span>ADN</span></div>
+    <div class="hint" id="goal-hint"></div>
+  </section>
   <button id="evolve" class="hidden">🦎 Evolucionar a Criatura Terrestre</button>
 
-  <!-- Mejoras: se generan desde JavaScript a partir de UPGRADES -->
+  <!-- Control de población -->
   <section class="card">
-    <div class="section-title" style="margin-bottom:10px">Evolución</div>
+    <div class="section-title">☠️ Control de población</div>
+    <div id="predators"></div>
+    <div class="item">
+      <span class="name">☢️ Inyección de radiación</span>
+      <button class="btn rad" id="rad-btn"></button>
+      <span class="desc">Elige un punto del estanque: la mitad de las células de la zona muere y las supervivientes quedan estériles.</span>
+    </div>
+  </section>
+
+  <!-- Mejoras de la especie -->
+  <section class="card">
+    <div class="section-title">Evolución de la especie</div>
     <div id="upgrades"></div>
   </section>
 
-  <!-- Estadísticas actuales del organismo -->
-  <section class="card stats">
-    <span>Velocidad</span><b id="stat-speed"></b>
-    <span>Tamaño</span><b id="stat-size"></b>
-    <span>Visión</span><b id="stat-vision"></b>
-    <span>Comida total</span><b id="stat-eaten">0</b>
+  <!-- Ficha de la célula seleccionada -->
+  <section class="card" id="selected-card">
+    <div class="section-title">Célula seleccionada</div>
+    <div id="selected-info"></div>
   </section>
 
   <section class="controls">
     <b>Controles</b><br>
-    🖱️ Mueve el ratón (o arrastra el dedo) para guiar.<br>
-    ⌨️ <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> o flechas para moverte.<br>
-    🤖 Sin ratón ni teclas, tu organismo busca solo la comida que entra en su visión.<br>
-    ⏸️ <kbd>P</kbd> pausa.
+    🖱️ Clic en una célula para seleccionarla.<br>
+    👆 Mantén pulsado (o arrastra) en el estanque para guiar a la seleccionada.<br>
+    ⌨️ <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>/flechas la mueven · <kbd>P</kbd> pausa.<br>
+    🤖 El resto de células comen, buscan pareja y huyen solas.
   </section>
 
-  <button class="secondary" id="pause">⏸️ Pausar</button>
+  <button class="secondary" id="reset">↺ Nueva partida</button>
 </aside>
+
+<!-- Ventana del informe (salto en el tiempo / ausencia / fin de partida) -->
+<div class="modal hidden" id="modal">
+  <div class="modal-box">
+    <h2 id="m-title"></h2>
+    <div class="sub" id="m-sub"></div>
+    <div id="m-alert"></div>
+    <div class="m-stats" id="m-stats"></div>
+    <div id="m-chart-wrap">
+      <div class="chart-title">Población durante el periodo</div>
+      <canvas id="m-chart"></canvas>
+    </div>
+    <button id="m-close">Continuar</button>
+  </div>
+</div>
 
 <script>
 /* =================================================================
-   SIMULADOR DE EVOLUCIÓN
-   Todo el juego vive en este archivo:
-     1. Configuración (mejoras, fases, constantes)
-     2. Estado del juego
-     3. Entrada (ratón, táctil, teclado)
-     4. Lógica (update): movimiento, comida, colisiones
-     5. Dibujo (render): fondo, comida, organismo, niebla de visión
-     6. Interfaz del panel lateral
-     7. Bucle principal
+   SIMULADOR DE EVOLUCIÓN — COLONIA
+   -----------------------------------------------------------------
+   Idea clave: hay UNA sola lógica de vida (hambre, crecimiento,
+   reproducción, vejez, muerte) que se usa de dos maneras:
+
+   · En directo: las células se mueven por el canvas y comen y se
+     aparean al tocarse (física).
+   · Avance rápido (saltos en el tiempo y tiempo fuera de la página):
+     se simula minuto a minuto con un modelo estadístico, sin dibujar,
+     para poder calcular días en milisegundos.
+
+   Secciones:
+     1. Configuración y escala temporal
+     2. Estado y guardado
+     3. Reglas de vida (compartidas)
+     4. Simulación en directo
+     5. Avance rápido (salto en el tiempo / ausencia)
+     6. Dibujo
+     7. Interfaz
+     8. Bucle principal y arranque
    ================================================================= */
 
-// ---------- 1. CONFIGURACIÓN ----------
+// ---------- 1. CONFIGURACIÓN Y ESCALA TEMPORAL ----------
 
-const EVOLVE_AT = 50;       // ADN necesario para pasar a la Fase 2
-const MAX_LEVEL = 8;        // nivel máximo de cada mejora
-const MAX_FOOD = 28;        // comida máxima en pantalla a la vez
-const FOOD_SPAWN_EVERY = 0.55; // segundos entre apariciones de comida
+/* Escala: 1 segundo real = 0.4 minutos de juego
+   → 1 hora real = 1 día de juego. Todas las duraciones de abajo
+   están en MINUTOS DE JUEGO. */
+const MIN_PER_SEC = 0.4;
+const DAY = 1440;
 
-/* Cada mejora define cómo cambia la estadística por nivel.
-   El coste sube con cada nivel: coste = base + nivel * incremento. */
+const ADULT_AT = 30;          // comida que necesita una cría para ser adulta
+const MAX_BREEDS = 3;         // camadas por célula; después es vieja
+const OLD_AGE = 1.5 * DAY;    // a esta edad es vieja aunque no haya criado
+const MAX_AGE = 2 * DAY;      // muere de vejez como muy tarde aquí
+const OLD_LIFE = 6 * 60;      // tras su 3.ª camada vive 6 h más
+const BREED_COOLDOWN = 180;   // descanso entre camadas (3 h)
+const DIGEST = 6;             // tras comer, digiere 6 min antes de poder comer otra vez
+                              // → una cría tarda ~3 h de juego en hacerse adulta
+const MATE_ENERGY = 40;       // energía mínima para aparearse
+
+const ENERGY_MAX = 100;
+const ENERGY_PER_FOOD = 20;
+const ENERGY_DECAY = 0.8;     // energía que se gasta por minuto (sin comer: ~2 h de vida)
+
+const FOOD_RATE = 6;          // comida nueva por minuto de juego
+const FOOD_CAP = 120;         // comida máxima en el estanque
+const PLAGUE_LIMIT = 150;     // ¡si se llega aquí, la colonia es una plaga y se pierde!
+const EVOLVE_AT = 50;         // ADN para pasar a la Fase 2
+const ADD_COST = 10;          // ADN por añadir un ejemplar
+const RAD_COST = 50;          // ADN por inyección de radiación
+const RAD_RADIUS = 90;        // px
+const MAX_OFFLINE = 30 * DAY; // tope de tiempo simulado al volver (por rendimiento)
+const MAX_LEVEL = 8;
+
+/* Mejoras de la especie (afectan a todas las células, también a las futuras).
+   coste = base + nivel * step */
 const UPGRADES = {
-  speed:  { name: '⚡ Velocidad', desc: 'Nada (o corre) más rápido.',          base: 3, step: 2, value: lvl => 110 + lvl * 32, unit: 'px/s' },
-  size:   { name: '🔵 Tamaño',    desc: 'Cuerpo más grande: atrapa comida más fácil.', base: 3, step: 2, value: lvl => 12 + lvl * 3.5, unit: 'px' },
-  vision: { name: '👁️ Visión',   desc: 'Detecta comida desde más lejos.',     base: 3, step: 2, value: lvl => 110 + lvl * 35,  unit: 'px' },
+  speed:  { name: '⚡ Velocidad', desc: 'Más rápidas: llegan antes a la comida y huyen mejor.', base: 5, step: 5, value: l => 110 + l * 32 },
+  size:   { name: '🔵 Tamaño',    desc: 'Atrapan comida más fácil, pero gastan más energía.',   base: 5, step: 5, value: l => 12 + l * 3.5 },
+  vision: { name: '👁️ Visión',   desc: 'Detectan comida, pareja y peligro desde más lejos.',   base: 5, step: 5, value: l => 110 + l * 35 },
 };
 
-const cost = (key) => UPGRADES[key].base + state.levels[key] * UPGRADES[key].step;
+/* Depredadores que el jugador puede soltar para controlar la población.
+   No se reproducen: hay que volver a comprarlos cuando mueren. */
+const PREDATORS = {
+  ameba: {
+    name: '🟣 Ameba', cost: 40, color: '#9f7aea', size: 18, speed: 55,
+    digest: 20, life: 12 * 60, starve: 0, huntRate: 1 / 10, densRef: 12, sense: 110,
+    desc: 'Lenta. Solo caza crías: frena el crecimiento sin tocar a los adultos. Vive 12 h.',
+    prey: c => stageOf(c) === 'cría',
+  },
+  hidra: {
+    name: '🌿 Hidra', cost: 60, color: '#68d391', size: 15, speed: 0, reach: 75,
+    digest: 25, life: 3 * DAY, starve: 0, huntRate: 1 / 20, densRef: 50, sense: 75,
+    desc: 'Inmóvil. Atrapa con sus tentáculos a quien pase cerca. Vive 3 días.',
+    prey: () => true,
+  },
+  didinio: {
+    name: '🔴 Didinio', cost: 80, color: '#f56565', size: 11, speed: 150,
+    digest: 10, life: DAY, starve: 3 * 60, huntRate: 1 / 8, densRef: 30, sense: 170,
+    desc: 'Rápido y voraz: caza a cualquiera. Muere si pasa 3 h sin comer. Vive 1 día.',
+    prey: () => true,
+  },
+};
 
-/* Datos visuales de cada fase. La Fase 2 reutiliza el mismo motor
-   cambiando el aspecto del mundo, de la comida y del organismo. */
 const PHASES = {
-  1: { label: 'Fase 1 · Célula',              bgTop: '#0e2a3f', bgBottom: '#06121c', fog: 'rgba(3, 10, 18, 0.62)' },
-  2: { label: 'Fase 2 · Criatura Terrestre',  bgTop: '#5a7d3a', bgBottom: '#3d5a28', fog: 'rgba(15, 25, 10, 0.55)' },
+  1: { label: 'Fase 1 · Células',            bgTop: '#0e2a3f', bgBottom: '#06121c' },
+  2: { label: 'Fase 2 · Criaturas Terrestres', bgTop: '#5a7d3a', bgBottom: '#3d5a28' },
 };
 
-// ---------- 2. ESTADO DEL JUEGO ----------
+const SAVE_KEY = 'evo-sim-colonia-v1';
+
+// Utilidades
+const rand = (a, b) => a + Math.random() * (b - a);
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// ---------- 2. ESTADO Y GUARDADO ----------
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-let W = 0, H = 0; // tamaño del canvas en píxeles CSS
+let W = 0, H = 0;
 
-const state = {
-  phase: 1,
-  dna: 0,            // ADN disponible para gastar
-  eaten: 0,          // comida total consumida
-  levels: { speed: 0, size: 0, vision: 0 },
-  paused: false,
-  time: 0,           // tiempo de juego acumulado (para animaciones)
-  player: { x: 0, y: 0, vx: 0, vy: 0, angle: 0 },
-  foods: [],         // comida en el mapa
-  particles: [],     // partículas al comer
-  floaters: [],      // textos "+1 ADN" flotantes
-  decor: [],         // decoración de fondo (burbujas / hierba)
-  spawnTimer: 0,
-  wander: { angle: Math.random() * Math.PI * 2 }, // rumbo al explorar en automático
-};
+let state;              // estado persistente (se guarda en localStorage)
+let fx = { particles: [], floaters: [], decor: [] }; // efectos visuales (no se guardan)
 
-// Estadísticas actuales derivadas de los niveles de mejora
-const stat = (key) => UPGRADES[key].value(state.levels[key]);
-
-// Utilidades matemáticas
-const rand = (a, b) => a + Math.random() * (b - a);
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-
-// ---------- 3. ENTRADA ----------
-
-const input = {
-  keys: new Set(),
-  pointer: null,     // {x, y} posición del ratón/dedo sobre el canvas (null = sin puntero)
-};
-
-function pointerPos(e) {
-  const r = canvas.getBoundingClientRect();
-  return { x: e.clientX - r.left, y: e.clientY - r.top };
+function newState() {
+  return {
+    phase: 1,
+    dna: 0,
+    levels: { speed: 0, size: 0, vision: 0 },
+    clock: 0,                  // minutos de juego desde el inicio
+    speed: 1,                  // 0 = pausa
+    cells: [],
+    predators: [],
+    foods: [],
+    foodAcc: 0,                // fracción acumulada de comida por aparecer
+    nextId: 1,
+    selected: null,
+    stats: { births: 0, food: 0, maxGen: 1, deaths: { hambre: 0, vejez: 0, depredador: 0, radiacion: 0 } },
+    over: null,                // null | 'plaga' | 'extincion'
+    savedAt: Date.now(),
+  };
 }
 
-/* Ratón: el organismo sigue al cursor mientras esté sobre el canvas.
-   Táctil: lo sigue mientras el dedo toca la pantalla. */
-canvas.addEventListener('pointermove', e => {
-  if (e.pointerType === 'mouse' || e.buttons) input.pointer = pointerPos(e);
-});
-canvas.addEventListener('pointerdown', e => {
-  input.pointer = pointerPos(e);
-  canvas.setPointerCapture(e.pointerId);
-});
-canvas.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') input.pointer = null; });
-canvas.addEventListener('pointercancel', () => { input.pointer = null; });
-canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') input.pointer = null; });
+function save() {
+  state.savedAt = Date.now();
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) { /* sin almacenamiento: seguimos sin guardar */ }
+}
 
-const KEY_DIRS = {
-  ArrowUp: [0, -1], KeyW: [0, -1],
-  ArrowDown: [0, 1], KeyS: [0, 1],
-  ArrowLeft: [-1, 0], KeyA: [-1, 0],
-  ArrowRight: [1, 0], KeyD: [1, 0],
-};
-window.addEventListener('keydown', e => {
-  if (KEY_DIRS[e.code]) { input.keys.add(e.code); e.preventDefault(); }
-  if (e.code === 'KeyP') togglePause();
-});
-window.addEventListener('keyup', e => input.keys.delete(e.code));
+function load() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
 
-// ---------- 4. LÓGICA ----------
+// ---------- 3. REGLAS DE VIDA (compartidas por directo y avance rápido) ----------
 
-/* Genera la decoración de fondo según la fase:
-   burbujas en el agua (Fase 1) o matas de hierba (Fase 2). */
-function buildDecor() {
-  state.decor = [];
-  const count = Math.round((W * H) / 9000);
-  for (let i = 0; i < count; i++) {
-    state.decor.push({ x: rand(0, W), y: rand(0, H), r: rand(1, 4), speed: rand(4, 14), seed: rand(0, 10) });
+const stat = key => UPGRADES[key].value(state.levels[key]);
+const upgradeCost = key => UPGRADES[key].base + state.levels[key] * UPGRADES[key].step;
+
+function makeCell(sex, x, y, gen = 1) {
+  return {
+    id: state.nextId++,
+    sex: sex || (Math.random() < 0.5 ? 'M' : 'F'),
+    x: x ?? rand(40, W - 40), y: y ?? rand(40, H - 40),
+    vx: 0, vy: 0, angle: rand(0, Math.PI * 2), wander: rand(0, Math.PI * 2),
+    age: 0, eaten: 0, energy: 70, digest: 0,
+    breeds: 0, cooldown: 0, oldFor: 0,
+    sterile: false, gen,
+  };
+}
+
+/* Etapa vital: cría → adulta → vieja */
+function stageOf(c) {
+  if (c.eaten < ADULT_AT) return 'cría';
+  if (c.breeds >= MAX_BREEDS || c.age >= OLD_AGE) return 'vieja';
+  return 'adulta';
+}
+
+function canBreed(c) {
+  return stageOf(c) === 'adulta' && !c.sterile && c.cooldown <= 0 && c.energy >= MATE_ENERGY;
+}
+
+/* Radio en pantalla: las crías crecen a medida que comen */
+function radiusOf(c) {
+  const R = stat('size');
+  return c.eaten < ADULT_AT ? R * (0.5 + 0.5 * c.eaten / ADULT_AT) : R;
+}
+
+/* Eficacia buscando comida (1 = célula base). Solo se usa en el avance rápido:
+   importa cuando escasea la comida. */
+function huntSkill(c) {
+  return (stat('speed') / 110) * Math.sqrt(stat('vision') / 110) *
+         Math.pow(stat('size') / 12, 0.3) * (c.eaten < ADULT_AT ? 0.8 : 1);
+}
+
+/* Gasto de energía por minuto: más tamaño = más gasto; las crías gastan menos */
+function energyDecay(c) {
+  return ENERGY_DECAY * Math.sqrt(stat('size') / 12) * (c.eaten < ADULT_AT ? 0.6 : 1);
+}
+
+/* Comer: recupera energía y, mientras es cría, crece y da ADN al jugador
+   (1 ADN por comida hasta los 30 de crecimiento). Así el ADN depende de los
+   nacimientos y no se dispara con una colonia de adultos.
+   'amount' puede ser fraccionario en el avance rápido. */
+function feed(c, amount) {
+  const growth = Math.max(0, Math.min(ADULT_AT - c.eaten, amount));
+  state.dna += growth;
+  c.eaten += amount;
+  c.digest = DIGEST;
+  c.energy = Math.min(ENERGY_MAX, c.energy + amount * ENERGY_PER_FOOD);
+  state.stats.food += amount;
+}
+
+/* Paso de vida de una célula durante 'gm' minutos. Devuelve la causa de muerte o null. */
+function lifeStep(c, gm) {
+  c.age += gm;
+  c.energy -= energyDecay(c) * gm;
+  c.cooldown = Math.max(0, c.cooldown - gm);
+  c.digest = Math.max(0, (c.digest || 0) - gm);
+  if (c.breeds >= MAX_BREEDS) c.oldFor += gm;
+  if (c.energy <= 0) return 'hambre';
+  if (c.age >= MAX_AGE || c.oldFor >= OLD_LIFE) return 'vejez';
+  return null;
+}
+
+/* Apareamiento: la hembra tiene 1 o 2 crías. Devuelve las crías nuevas. */
+function mate(female, male, live) {
+  female.breeds++; male.breeds++;
+  female.cooldown = male.cooldown = BREED_COOLDOWN;
+  female.energy -= 20; male.energy -= 10;
+  const gen = Math.max(female.gen, male.gen) + 1;
+  state.stats.maxGen = Math.max(state.stats.maxGen, gen);
+  const n = Math.random() < 0.5 ? 1 : 2;
+  const babies = [];
+  for (let i = 0; i < n; i++) {
+    const b = makeCell(null, clamp(female.x + rand(-20, 20), 10, W - 10), clamp(female.y + rand(-20, 20), 10, H - 10), gen);
+    b.energy = 60;
+    babies.push(b);
+  }
+  state.cells.push(...babies);
+  state.stats.births += n;
+  if (live) {
+    burst(female.x, female.y, '#fbb6ce', 14);
+    floater(female.x, female.y - 16, n === 1 ? '¡Nace 1!' : '¡Nacen 2!', '#fbb6ce');
+  }
+  return babies;
+}
+
+/* Elimina una célula registrando la causa. */
+function kill(c, cause, live) {
+  const i = state.cells.indexOf(c);
+  if (i < 0) return;
+  state.cells.splice(i, 1);
+  state.stats.deaths[cause]++;
+  if (state.selected === c.id) state.selected = null;
+  if (live) burst(c.x, c.y, cause === 'radiacion' ? '#d6f35a' : '#a0aec0', 10);
+}
+
+/* Fin de partida: extinción o plaga (población descontrolada). */
+function checkOver() {
+  if (state.over) return true;
+  if (state.cells.length === 0) state.over = 'extincion';
+  else if (state.cells.length >= PLAGUE_LIMIT) state.over = 'plaga';
+  return !!state.over;
+}
+
+// ---------- 4. SIMULACIÓN EN DIRECTO ----------
+
+const input = { keys: new Set(), pointer: null, aiming: false };
+
+/* Dirección deseada de una célula (vector unitario + fuerza 0..1). */
+function cellDirection(c) {
+  // a) La célula seleccionada obedece al jugador
+  if (c.id === state.selected) {
+    let kx = 0, ky = 0;
+    for (const code of input.keys) { kx += KEY_DIRS[code][0]; ky += KEY_DIRS[code][1]; }
+    if (kx || ky) { const l = Math.hypot(kx, ky); return { x: kx / l, y: ky / l, s: 1 }; }
+    if (input.pointer) {
+      const dx = input.pointer.x - c.x, dy = input.pointer.y - c.y, d = Math.hypot(dx, dy);
+      return d < 4 ? { x: 0, y: 0, s: 0 } : { x: dx / d, y: dy / d, s: Math.min(1, d / 60) };
+    }
+  }
+
+  const V = stat('vision');
+
+  // b) Huir de depredadores que la consideran presa
+  for (const p of state.predators) {
+    const T = PREDATORS[p.type];
+    if (T.speed === 0 || p.cooldown > 0 || !T.prey(c)) continue;
+    const d = dist(c, p);
+    if (d < V * 0.6) return { x: (c.x - p.x) / d, y: (c.y - p.y) / d, s: 1 };
+  }
+
+  // c) Buscar pareja si está lista
+  if (canBreed(c)) {
+    let best = null, bd = V;
+    for (const o of state.cells) {
+      if (o.sex !== c.sex && canBreed(o)) { const d = dist(c, o); if (d < bd) { bd = d; best = o; } }
+    }
+    if (best) return { x: (best.x - c.x) / bd, y: (best.y - c.y) / bd, s: 0.9 };
+  }
+
+  // d) Buscar la comida más cercana dentro de su visión (si no está digiriendo)
+  let food = null, fd = V;
+  if (c.digest <= 0) for (const f of state.foods) { const d = dist(c, f); if (d < fd) { fd = d; food = f; } }
+  if (food) return { x: (food.x - c.x) / (fd || 1), y: (food.y - c.y) / (fd || 1), s: 0.85 };
+
+  // e) Explorar: rumbo que cambia poco a poco y gira hacia el centro en los bordes
+  c.wander += rand(-0.15, 0.15);
+  if (c.x < 50 || c.x > W - 50 || c.y < 50 || c.y > H - 50) c.wander = Math.atan2(H / 2 - c.y, W / 2 - c.x);
+  return { x: Math.cos(c.wander), y: Math.sin(c.wander), s: 0.55 };
+}
+
+/* Mueve un cuerpo (célula o depredador) hacia una dirección con aceleración suave. */
+function moveBody(b, dir, maxSpeed, dt, r) {
+  const k = Math.min(1, dt * 6);
+  b.vx += (dir.x * maxSpeed * dir.s - b.vx) * k;
+  b.vy += (dir.y * maxSpeed * dir.s - b.vy) * k;
+  b.x = clamp(b.x + b.vx * dt, r, W - r);
+  b.y = clamp(b.y + b.vy * dt, r, H - r);
+  if (Math.hypot(b.vx, b.vy) > 5) {
+    let diff = Math.atan2(b.vy, b.vx) - b.angle;
+    diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+    b.angle += diff * Math.min(1, dt * 8);
   }
 }
 
 function spawnFood() {
-  const margin = 20;
   state.foods.push({
-    x: rand(margin, W - margin),
-    y: rand(margin, H - margin),
-    r: state.phase === 1 ? rand(4, 6) : rand(6, 8),
-    seed: rand(0, Math.PI * 2),            // desfase para animaciones
-    vx: rand(-8, 8), vy: rand(-8, 8),     // la comida flota lentamente (Fase 1)
-    born: state.time,
+    x: rand(15, W - 15), y: rand(15, H - 15), r: rand(4, 6),
+    seed: rand(0, 6.28), vx: rand(-8, 8), vy: rand(-8, 8), born: state.clock,
   });
 }
 
-/* Devuelve la comida más cercana dentro del rango de visión (o null). */
-function nearestVisibleFood() {
-  const p = state.player, vision = stat('vision');
-  let best = null, bestD = Infinity;
-  for (const f of state.foods) {
-    const d = dist(p, f);
-    if (d < vision && d < bestD) { best = f; bestD = d; }
+/* Un paso de simulación en directo. dt en segundos reales. */
+function liveStep(dt) {
+  const gm = dt * MIN_PER_SEC;
+  state.clock += gm;
+
+  // Comida nueva
+  state.foodAcc += FOOD_RATE * gm;
+  while (state.foodAcc >= 1) {
+    state.foodAcc -= 1;
+    if (state.foods.length < FOOD_CAP) spawnFood();
   }
-  return best;
-}
-
-/* Calcula hacia dónde quiere moverse el organismo (vector unitario o 0).
-   Prioridad: teclado > ratón/dedo > piloto automático. */
-function desiredDirection() {
-  const p = state.player;
-
-  // a) Teclado
-  let kx = 0, ky = 0;
-  for (const code of input.keys) { kx += KEY_DIRS[code][0]; ky += KEY_DIRS[code][1]; }
-  if (kx || ky) {
-    const len = Math.hypot(kx, ky);
-    return { x: kx / len, y: ky / len, strength: 1 };
-  }
-
-  // b) Ratón / dedo: ir hacia el puntero (frenando al acercarse)
-  if (input.pointer) {
-    const dx = input.pointer.x - p.x, dy = input.pointer.y - p.y;
-    const d = Math.hypot(dx, dy);
-    if (d < 4) return { x: 0, y: 0, strength: 0 };
-    return { x: dx / d, y: dy / d, strength: Math.min(1, d / 60) };
-  }
-
-  // c) Piloto automático: perseguir la comida visible más cercana
-  const target = nearestVisibleFood();
-  if (target) {
-    const dx = target.x - p.x, dy = target.y - p.y, d = Math.hypot(dx, dy) || 1;
-    return { x: dx / d, y: dy / d, strength: 0.85 };
-  }
-
-  // d) Sin comida a la vista: explorar en una dirección que cambia poco a poco
-  // y gira hacia el centro al acercarse a los bordes
-  const w = state.wander;
-  w.angle += rand(-1, 1) * 0.08;
-  const nearEdge = p.x < 60 || p.x > W - 60 || p.y < 60 || p.y > H - 60;
-  if (nearEdge) w.angle = Math.atan2(H / 2 - p.y, W / 2 - p.x);
-  return { x: Math.cos(w.angle), y: Math.sin(w.angle), strength: 0.6 };
-}
-
-function update(dt) {
-  state.time += dt;
-  const p = state.player;
-  const radius = stat('size');
-
-  // --- Movimiento del organismo con aceleración suave ---
-  const dir = desiredDirection();
-  const maxSpeed = stat('speed');
-  const targetVx = dir.x * maxSpeed * dir.strength;
-  const targetVy = dir.y * maxSpeed * dir.strength;
-  const accel = Math.min(1, dt * 6); // cuanto mayor, más "ágil" el control
-  p.vx += (targetVx - p.vx) * accel;
-  p.vy += (targetVy - p.vy) * accel;
-  p.x += p.vx * dt;
-  p.y += p.vy * dt;
-
-  // Mantener dentro de los bordes
-  p.x = Math.max(radius, Math.min(W - radius, p.x));
-  p.y = Math.max(radius, Math.min(H - radius, p.y));
-
-  // Orientación suave hacia la dirección de movimiento
-  if (Math.hypot(p.vx, p.vy) > 5) {
-    const targetAngle = Math.atan2(p.vy, p.vx);
-    let diff = targetAngle - p.angle;
-    diff = Math.atan2(Math.sin(diff), Math.cos(diff)); // normalizar a [-π, π]
-    p.angle += diff * Math.min(1, dt * 8);
-  }
-
-  // --- Aparición de comida ---
-  state.spawnTimer -= dt;
-  if (state.spawnTimer <= 0 && state.foods.length < MAX_FOOD) {
-    spawnFood();
-    state.spawnTimer = FOOD_SPAWN_EVERY;
-  }
-
-  // --- Comida: flotar (solo en el agua) y comprobar si se come ---
-  for (let i = state.foods.length - 1; i >= 0; i--) {
-    const f = state.foods[i];
-    if (state.phase === 1) {
+  if (state.phase === 1) {
+    for (const f of state.foods) {
       f.x += f.vx * dt; f.y += f.vy * dt;
       if (f.x < 10 || f.x > W - 10) f.vx *= -1;
       if (f.y < 10 || f.y > H - 10) f.vy *= -1;
     }
-    if (dist(p, f) < radius + f.r) {
-      state.foods.splice(i, 1);
-      eat(f);
+  }
+
+  // Células: moverse, comer, vivir
+  const speed = stat('speed');
+  for (const c of [...state.cells]) {
+    const r = radiusOf(c);
+    moveBody(c, cellDirection(c), speed * (c.eaten < ADULT_AT ? 0.85 : 1), dt, r);
+    for (let i = state.foods.length - 1; i >= 0 && c.digest <= 0; i--) {
+      const f = state.foods[i];
+      if (Math.abs(f.x - c.x) < r + f.r && dist(c, f) < r + f.r) {
+        state.foods.splice(i, 1);
+        if (c.eaten < ADULT_AT) floater(f.x, f.y - 8, '+1 ADN', '#81e6d9');
+        feed(c, 1);
+      }
+    }
+    const cause = lifeStep(c, gm);
+    if (cause) kill(c, cause, true);
+  }
+
+  // Apareamiento por contacto
+  for (const f of state.cells) {
+    if (f.sex !== 'F' || !canBreed(f)) continue;
+    for (const m of state.cells) {
+      if (m.sex === 'M' && canBreed(m) && dist(f, m) < radiusOf(f) + radiusOf(m)) { mate(f, m, true); break; }
     }
   }
 
-  // --- Partículas y textos flotantes ---
-  for (const pt of state.particles) {
-    pt.x += pt.vx * dt; pt.y += pt.vy * dt;
-    pt.vx *= 0.92; pt.vy *= 0.92;
-    pt.life -= dt;
-  }
-  state.particles = state.particles.filter(pt => pt.life > 0);
-  for (const fl of state.floaters) { fl.y -= 30 * dt; fl.life -= dt; }
-  state.floaters = state.floaters.filter(fl => fl.life > 0);
-
-  // --- Decoración de fondo ---
-  for (const d of state.decor) {
-    if (state.phase === 1) {           // las burbujas suben
-      d.y -= d.speed * dt;
-      if (d.y < -5) { d.y = H + 5; d.x = rand(0, W); }
+  // Depredadores
+  for (const p of [...state.predators]) {
+    const T = PREDATORS[p.type];
+    p.age += gm; p.cooldown -= gm; p.sinceMeal += gm;
+    if (p.age >= T.life || (T.starve && p.sinceMeal >= T.starve)) {
+      state.predators.splice(state.predators.indexOf(p), 1);
+      burst(p.x, p.y, T.color, 12);
+      continue;
+    }
+    // Buscar presa válida dentro de su radio de detección (con pocas células cuesta encontrarlas)
+    let prey = null, pd = T.sense;
+    if (p.cooldown <= 0) {
+      for (const c of state.cells) { if (T.prey(c)) { const d = dist(p, c); if (d < pd) { pd = d; prey = c; } } }
+    }
+    if (T.speed > 0) {
+      let dir;
+      if (prey) dir = { x: (prey.x - p.x) / pd, y: (prey.y - p.y) / pd, s: 1 };
+      else {  // digiriendo o sin presas: deambula despacio
+        p.wander += rand(-0.1, 0.1);
+        if (p.x < 50 || p.x > W - 50 || p.y < 50 || p.y > H - 50) p.wander = Math.atan2(H / 2 - p.y, W / 2 - p.x);
+        dir = { x: Math.cos(p.wander), y: Math.sin(p.wander), s: 0.3 };
+      }
+      moveBody(p, dir, T.speed, dt, T.size);
+    }
+    const reach = T.reach || T.size + 2;
+    if (prey && pd < reach + radiusOf(prey)) {
+      kill(prey, 'depredador', true);
+      p.cooldown = T.digest; p.sinceMeal = 0;
     }
   }
+
+  checkOver();
 }
 
-/* Cada comida da 1 ADN, con efectos visuales. */
-function eat(food) {
-  state.dna += 1;
-  state.eaten += 1;
-  const color = state.phase === 1 ? '#81e6d9' : '#f56565';
-  for (let i = 0; i < 10; i++) {
-    const a = rand(0, Math.PI * 2), s = rand(40, 120);
-    state.particles.push({ x: food.x, y: food.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rand(.3, .6), color });
+/* Radiación: mitad de la zona muere, el resto queda estéril. */
+function irradiate(x, y) {
+  if (state.dna < RAD_COST || state.over) return;
+  state.dna -= RAD_COST;
+  for (const c of [...state.cells]) {
+    if (Math.hypot(c.x - x, c.y - y) > RAD_RADIUS) continue;
+    if (Math.random() < 0.5) kill(c, 'radiacion', true);
+    else c.sterile = true;
   }
-  state.floaters.push({ x: food.x, y: food.y - 10, life: 0.9, text: '+1 ADN' });
+  fx.flash = { x, y, t: 1 };
+  checkOver();
+  setAiming(false);
   updateUI();
 }
 
-// ---------- 5. DIBUJO ----------
+// ---------- 5. AVANCE RÁPIDO ----------
 
-function drawBackground() {
+/* Simula 'minutes' minutos de juego de golpe, con pasos de 1 minuto.
+   Modelo estadístico: cada célula captura comida según sus mejoras y lo
+   que haya en el estanque (con competencia), las parejas se encuentran
+   con cierta probabilidad y los depredadores cazan según la densidad de
+   presas. Devuelve un informe con lo que ha pasado. */
+function fastForward(minutes) {
+  const before = {
+    pop: state.cells.length, dna: state.dna, births: state.stats.births,
+    deaths: { ...state.stats.deaths }, clock: state.clock,
+  };
+  const samples = [{ t: 0, n: state.cells.length }];
+  const every = Math.max(1, Math.round(minutes / 200)); // ~200 puntos para la gráfica
+  let peak = state.cells.length;
+  let food = state.foods.length + state.foodAcc;
+  const STEP = 1;
+  let t = 0;
+
+  while (t < minutes && !state.over) {
+    t += STEP;
+    state.clock += STEP;
+
+    // 1) Comida: aparece y se reparte. Cada célula come como mucho 1 cada DIGEST
+    //    minutos; si escasea, las más hábiles (mejoras) encuentran más.
+    food = Math.min(FOOD_CAP, food + FOOD_RATE * STEP);
+    const want = state.cells.map(c => {
+      const x = food * huntSkill(c);
+      return STEP / DIGEST * x / (x + 8);
+    });
+    const demand = want.reduce((a, b) => a + b, 0);
+    const scale = demand > food ? food / demand : 1;
+    state.cells.forEach((c, i) => {
+      const a = want[i] * scale;
+      if (a > 0) { feed(c, a); c.digest = 0; } // en este modelo la digestión ya va en 'want'
+    });
+    food -= demand * scale;
+
+    // 2) Vida y muerte
+    for (const c of [...state.cells]) {
+      const cause = lifeStep(c, STEP);
+      if (cause) kill(c, cause, false);
+    }
+
+    // 3) Apareamiento: cada hembra lista encuentra macho con cierta probabilidad
+    const males = state.cells.filter(c => c.sex === 'M' && canBreed(c));
+    if (males.length) {
+      for (const f of state.cells.filter(c => c.sex === 'F' && canBreed(c))) {
+        const ready = males.filter(canBreed);
+        if (!ready.length) break;
+        if (Math.random() < 1 - Math.exp(-STEP / 25)) mate(f, pick(ready), false);
+      }
+    }
+
+    // 4) Depredadores
+    for (const p of [...state.predators]) {
+      const T = PREDATORS[p.type];
+      p.age += STEP; p.cooldown -= STEP; p.sinceMeal += STEP;
+      if (p.age >= T.life || (T.starve && p.sinceMeal >= T.starve)) {
+        state.predators.splice(state.predators.indexOf(p), 1);
+        continue;
+      }
+      if (p.cooldown > 0) continue;
+      const preys = state.cells.filter(T.prey);
+      if (!preys.length) continue;
+      // Respuesta tipo III: con pocas presas casi no las encuentra; con muchas, caza a tope
+      const density = preys.length ** 2 / (preys.length ** 2 + T.densRef ** 2);
+      if (Math.random() < 1 - Math.exp(-T.huntRate * density * STEP)) {
+        kill(pick(preys), 'depredador', false);
+        p.cooldown = T.digest; p.sinceMeal = 0;
+      }
+    }
+
+    peak = Math.max(peak, state.cells.length);
+    checkOver();
+    if (t % every === 0) samples.push({ t, n: state.cells.length });
+  }
+  if (samples[samples.length - 1].t !== t) samples.push({ t, n: state.cells.length });
+
+  // Volver a poner la comida y las células en el estanque
+  state.foodAcc = food % 1;
+  state.foods = [];
+  for (let i = 0; i < Math.floor(food); i++) spawnFood();
+  for (const c of state.cells) { c.x = rand(30, W - 30); c.y = rand(30, H - 30); c.vx = c.vy = 0; }
+  for (const p of state.predators) { if (PREDATORS[p.type].speed > 0) { p.x = rand(30, W - 30); p.y = rand(30, H - 30); } }
+
+  const d = state.stats.deaths;
+  return {
+    minutes: t, samples, peak,
+    popBefore: before.pop, popAfter: state.cells.length,
+    births: state.stats.births - before.births,
+    deaths: {
+      hambre: d.hambre - before.deaths.hambre, vejez: d.vejez - before.deaths.vejez,
+      depredador: d.depredador - before.deaths.depredador, radiacion: d.radiacion - before.deaths.radiacion,
+    },
+    dna: Math.floor(state.dna) - Math.floor(before.dna),
+    maxGen: state.stats.maxGen,
+  };
+}
+
+function timeJump(minutes) {
+  if (state.over) return;
+  setAiming(false);
+  const rep = fastForward(minutes);
+  showReport(`⏩ Salto de +${fmtDur(minutes)}`, `Ahora es ${fmtClock(state.clock)}`, rep);
+  updateUI(); save();
+}
+
+/* Tiempo pasado fuera de la página (o con la pestaña en segundo plano). */
+function catchUp(realMs, title) {
+  if (state.over || state.speed === 0) return;
+  const minutes = Math.min(MAX_OFFLINE, Math.floor(realMs / 1000 * MIN_PER_SEC));
+  if (minutes < 1) return;
+  const rep = fastForward(minutes);
+  // Solo molestamos con el informe si ha pasado algo de tiempo apreciable
+  if (minutes >= 15 || state.over) {
+    const capped = realMs / 1000 * MIN_PER_SEC > MAX_OFFLINE ? ' (máximo simulado: 30 días)' : '';
+    showReport(title, `Has estado fuera ${fmtReal(realMs)} → han pasado ${fmtDur(minutes)} de juego${capped}`, rep);
+  }
+  updateUI(); save();
+}
+
+// ---------- 6. DIBUJO ----------
+
+function burst(x, y, color, n) {
+  for (let i = 0; i < n; i++) {
+    const a = rand(0, 6.28), s = rand(40, 130);
+    fx.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rand(.3, .7), color });
+  }
+}
+function floater(x, y, text, color) { fx.floaters.push({ x, y, text, color, life: 1 }); }
+
+function buildDecor() {
+  fx.decor = [];
+  const n = Math.round(W * H / 9000);
+  for (let i = 0; i < n; i++) fx.decor.push({ x: rand(0, W), y: rand(0, H), r: rand(1, 4), speed: rand(4, 14), seed: rand(0, 10) });
+}
+
+let t = 0; // tiempo visual (segundos reales) para animaciones
+
+function drawBackground(dt) {
   const ph = PHASES[state.phase];
   const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, ph.bgTop);
-  g.addColorStop(1, ph.bgBottom);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, H);
-
+  g.addColorStop(0, ph.bgTop); g.addColorStop(1, ph.bgBottom);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   if (state.phase === 1) {
-    // Burbujas que suben
-    ctx.strokeStyle = 'rgba(160, 220, 255, 0.18)';
+    ctx.strokeStyle = 'rgba(160, 220, 255, 0.15)';
     ctx.lineWidth = 1;
-    for (const d of state.decor) {
-      ctx.beginPath();
-      ctx.arc(d.x + Math.sin(state.time + d.seed) * 3, d.y, d.r, 0, Math.PI * 2);
-      ctx.stroke();
+    for (const d of fx.decor) {
+      d.y -= d.speed * dt;
+      if (d.y < -5) { d.y = H + 5; d.x = rand(0, W); }
+      ctx.beginPath(); ctx.arc(d.x + Math.sin(t + d.seed) * 3, d.y, d.r, 0, 6.28); ctx.stroke();
     }
   } else {
-    // Matas de hierba que se mecen
     ctx.strokeStyle = 'rgba(30, 50, 15, 0.35)';
     ctx.lineWidth = 1.5;
-    for (const d of state.decor) {
-      const sway = Math.sin(state.time * 1.5 + d.seed) * 2;
+    for (const d of fx.decor) {
+      const sway = Math.sin(t * 1.5 + d.seed) * 2;
       for (let k = -1; k <= 1; k++) {
-        ctx.beginPath();
-        ctx.moveTo(d.x + k * 3, d.y);
-        ctx.lineTo(d.x + k * 5 + sway, d.y - 6 - d.r * 1.5);
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(d.x + k * 3, d.y); ctx.lineTo(d.x + k * 5 + sway, d.y - 6 - d.r * 1.5); ctx.stroke();
       }
     }
   }
 }
 
 function drawFood(f) {
-  // Al aparecer, la comida crece desde 0 durante 0.3 s
-  const grow = Math.min(1, (state.time - f.born) / 0.3);
-  const pulse = 1 + Math.sin(state.time * 4 + f.seed) * 0.12;
-  const r = f.r * grow * pulse;
-
+  const r = f.r * (1 + Math.sin(t * 4 + f.seed) * 0.12);
   if (state.phase === 1) {
-    // Nutriente brillante
     const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, r * 2.4);
     g.addColorStop(0, 'rgba(154, 255, 180, 0.9)');
-    g.addColorStop(0.4, 'rgba(104, 211, 145, 0.5)');
+    g.addColorStop(0.4, 'rgba(104, 211, 145, 0.45)');
     g.addColorStop(1, 'rgba(104, 211, 145, 0)');
     ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(f.x, f.y, r * 2.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(f.x, f.y, r * 2.4, 0, 6.28); ctx.fill();
     ctx.fillStyle = '#c6f6d5';
-    ctx.beginPath(); ctx.arc(f.x, f.y, r * 0.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(f.x, f.y, r * 0.6, 0, 6.28); ctx.fill();
   } else {
-    // Baya roja con hojita
     ctx.fillStyle = '#2f855a';
-    ctx.beginPath(); ctx.ellipse(f.x + r * 0.5, f.y - r, r * 0.6, r * 0.3, -0.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(f.x + r * 0.5, f.y - r, r * 0.6, r * 0.3, -0.6, 0, 6.28); ctx.fill();
     ctx.fillStyle = '#e53e3e';
-    ctx.beginPath(); ctx.arc(f.x, f.y, r, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.beginPath(); ctx.arc(f.x - r * 0.35, f.y - r * 0.35, r * 0.25, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(f.x, f.y, r, 0, 6.28); ctx.fill();
   }
 }
 
-/* Fase 1: célula con membrana ondulante, núcleo y flagelo. */
-function drawCell(p, R) {
-  const t = state.time;
-  const speedRatio = Math.min(1, Math.hypot(p.vx, p.vy) / stat('speed'));
-
-  ctx.save();
-  ctx.translate(p.x, p.y);
-  ctx.rotate(p.angle);
-
-  // Flagelo (cola) que ondula más rápido cuanto más rápido nada
-  ctx.strokeStyle = 'rgba(129, 230, 217, 0.8)';
-  ctx.lineWidth = Math.max(1.5, R * 0.12);
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(-R * 0.9, 0);
-  for (let i = 1; i <= 12; i++) {
-    const x = -R * 0.9 - i * R * 0.14;
-    const y = Math.sin(t * (8 + speedRatio * 10) - i * 0.7) * (R * 0.06 * i);
-    ctx.lineTo(x, y);
-  }
-  ctx.stroke();
-
-  // Membrana: un círculo deformado con ondas sinusoidales
-  ctx.beginPath();
-  const pts = 28;
-  for (let i = 0; i <= pts; i++) {
-    const a = (i / pts) * Math.PI * 2;
-    const wobble = 1 + Math.sin(a * 5 + t * 3) * 0.04 + Math.sin(a * 3 - t * 2) * 0.03;
-    const stretch = 1 + speedRatio * 0.12 * Math.cos(a) ** 2; // se alarga al nadar
-    const x = Math.cos(a) * R * wobble * stretch;
-    const y = Math.sin(a) * R * wobble / stretch;
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  }
-  const g = ctx.createRadialGradient(-R * 0.3, -R * 0.3, R * 0.1, 0, 0, R);
-  g.addColorStop(0, '#b2f5ea');
-  g.addColorStop(1, '#319795');
-  ctx.fillStyle = g;
-  ctx.fill();
-  ctx.strokeStyle = '#e6fffa';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // Núcleo
-  ctx.fillStyle = 'rgba(85, 60, 154, 0.75)';
-  ctx.beginPath(); ctx.arc(R * 0.15, 0, R * 0.35, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.4)';
-  ctx.beginPath(); ctx.arc(R * 0.05, -R * 0.1, R * 0.1, 0, Math.PI * 2); ctx.fill();
-
-  ctx.restore();
+/* Colores según sexo; las viejas se ven apagadas. */
+function cellColors(c) {
+  const old = stageOf(c) === 'vieja';
+  if (c.sex === 'M') return old ? ['#a3b8c8', '#5a6d7c'] : ['#bee3f8', '#3182ce'];
+  return old ? ['#d3b8c4', '#7c5a68'] : ['#fed7e2', '#d53f8c'];
 }
 
-/* Fase 2: criatura con cuerpo, cuatro patas animadas, cola y ojos. */
-function drawCreature(p, R) {
-  const t = state.time;
-  const moving = Math.min(1, Math.hypot(p.vx, p.vy) / stat('speed'));
-  const step = Math.sin(t * 14) * moving; // ciclo de las patas
-
+function drawCell(c) {
+  const R = radiusOf(c);
+  const [light, dark] = cellColors(c);
+  const sp = Math.min(1, Math.hypot(c.vx, c.vy) / stat('speed'));
   ctx.save();
-  ctx.translate(p.x, p.y);
-  ctx.rotate(p.angle);
+  ctx.translate(c.x, c.y);
+  ctx.rotate(c.angle);
 
-  // Patas (se dibujan primero para quedar bajo el cuerpo)
-  ctx.strokeStyle = '#7b341e';
-  ctx.lineWidth = Math.max(2, R * 0.22);
-  ctx.lineCap = 'round';
-  const legs = [[0.5, 1, 1], [0.5, -1, -1], [-0.5, 1, -1], [-0.5, -1, 1]];
-  for (const [lx, side, phase] of legs) {
-    const swing = step * phase * R * 0.45;
+  if (state.phase === 1) {
+    // Flagelo
+    ctx.strokeStyle = light; ctx.globalAlpha = 0.7;
+    ctx.lineWidth = Math.max(1.2, R * 0.12); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-R * 0.9, 0);
+    for (let i = 1; i <= 10; i++) ctx.lineTo(-R * 0.9 - i * R * 0.15, Math.sin(t * (8 + sp * 10) - i * 0.7 + c.id) * R * 0.06 * i);
+    ctx.stroke(); ctx.globalAlpha = 1;
+    // Membrana ondulante
     ctx.beginPath();
-    ctx.moveTo(lx * R, side * R * 0.5);
-    ctx.lineTo(lx * R + swing, side * R * 1.05);
-    ctx.stroke();
-  }
-
-  // Cola
-  ctx.beginPath();
-  ctx.moveTo(-R * 0.9, 0);
-  ctx.quadraticCurveTo(-R * 1.5, Math.sin(t * 6) * R * 0.4, -R * 1.9, Math.sin(t * 6 + 1) * R * 0.3);
-  ctx.lineWidth = Math.max(2, R * 0.18);
-  ctx.stroke();
-
-  // Cuerpo
-  ctx.fillStyle = '#dd6b20';
-  ctx.beginPath(); ctx.ellipse(0, 0, R * 1.05, R * 0.7, 0, 0, Math.PI * 2); ctx.fill();
-  // Manchas
-  ctx.fillStyle = 'rgba(123, 52, 30, 0.5)';
-  ctx.beginPath(); ctx.arc(-R * 0.3, -R * 0.25, R * 0.15, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(-R * 0.5, R * 0.2, R * 0.12, 0, Math.PI * 2); ctx.fill();
-  // Cabeza
-  ctx.fillStyle = '#ed8936';
-  ctx.beginPath(); ctx.ellipse(R * 0.95, 0, R * 0.45, R * 0.4, 0, 0, Math.PI * 2); ctx.fill();
-  // Ojos
-  for (const s of [-1, 1]) {
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.arc(R * 1.1, s * R * 0.2, R * 0.13, 0, Math.PI * 2); ctx.fill();
+    for (let i = 0; i <= 24; i++) {
+      const a = i / 24 * 6.28;
+      const w = 1 + Math.sin(a * 5 + t * 3 + c.id) * 0.04 + Math.sin(a * 3 - t * 2) * 0.03;
+      const st = 1 + sp * 0.12 * Math.cos(a) ** 2;
+      const x = Math.cos(a) * R * w * st, y = Math.sin(a) * R * w / st;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    const g = ctx.createRadialGradient(-R * .3, -R * .3, R * .1, 0, 0, R);
+    g.addColorStop(0, light); g.addColorStop(1, dark);
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Núcleo
+    ctx.fillStyle = 'rgba(40, 30, 90, 0.55)';
+    ctx.beginPath(); ctx.arc(R * .15, 0, R * .33, 0, 6.28); ctx.fill();
+  } else {
+    // Criatura terrestre: patas, cola, cuerpo y cabeza
+    const step = Math.sin(t * 14 + c.id) * sp;
+    ctx.strokeStyle = dark; ctx.lineWidth = Math.max(2, R * .22); ctx.lineCap = 'round';
+    for (const [lx, side, ph] of [[.5, 1, 1], [.5, -1, -1], [-.5, 1, -1], [-.5, -1, 1]]) {
+      ctx.beginPath(); ctx.moveTo(lx * R, side * R * .5); ctx.lineTo(lx * R + step * ph * R * .45, side * R * 1.05); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(-R * .9, 0);
+    ctx.quadraticCurveTo(-R * 1.5, Math.sin(t * 6) * R * .4, -R * 1.9, Math.sin(t * 6 + 1) * R * .3); ctx.stroke();
+    ctx.fillStyle = dark; ctx.beginPath(); ctx.ellipse(0, 0, R * 1.05, R * .7, 0, 0, 6.28); ctx.fill();
+    ctx.fillStyle = light; ctx.beginPath(); ctx.ellipse(R * .95, 0, R * .45, R * .4, 0, 0, 6.28); ctx.fill();
     ctx.fillStyle = '#1a202c';
-    ctx.beginPath(); ctx.arc(R * 1.15, s * R * 0.2, R * 0.07, 0, Math.PI * 2); ctx.fill();
+    for (const s of [-1, 1]) { ctx.beginPath(); ctx.arc(R * 1.15, s * R * .2, R * .08, 0, 6.28); ctx.fill(); }
   }
-
   ctx.restore();
+
+  // Marcas: estéril (☢) y seleccionada (anillo + visión)
+  if (c.sterile) {
+    ctx.font = `${Math.max(9, R * .9)}px system-ui`; ctx.textAlign = 'center';
+    ctx.fillText('☢', c.x, c.y - R - 3);
+  }
+  if (c.id === state.selected) {
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(c.x, c.y, R + 6, 0, 6.28); ctx.stroke();
+    ctx.save(); ctx.setLineDash([6, 8]); ctx.lineDashOffset = -t * 10;
+    ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(c.x, c.y, stat('vision'), 0, 6.28); ctx.stroke();
+    ctx.restore();
+  }
 }
 
-/* Niebla: oscurece todo salvo el círculo de visión del organismo. */
-function drawVisionFog() {
-  const p = state.player, V = stat('vision');
-  const g = ctx.createRadialGradient(p.x, p.y, V * 0.75, p.x, p.y, V);
-  g.addColorStop(0, 'rgba(0,0,0,0)');
-  g.addColorStop(1, PHASES[state.phase].fog);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, H);
-
-  // Borde punteado del rango de visión
+function drawPredator(p) {
+  const T = PREDATORS[p.type];
+  const S = T.size;
+  const digesting = p.cooldown > 0;
   ctx.save();
-  ctx.setLineDash([6, 8]);
-  ctx.lineDashOffset = -state.time * 10;
-  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.arc(p.x, p.y, V, 0, Math.PI * 2); ctx.stroke();
+  ctx.translate(p.x, p.y);
+  if (p.type === 'ameba') {
+    // Blob irregular con pseudópodos
+    ctx.beginPath();
+    for (let i = 0; i <= 20; i++) {
+      const a = i / 20 * 6.28;
+      const r = S * (1 + .25 * Math.sin(a * 3 + t * 1.5) + .12 * Math.sin(a * 5 - t * 2.3));
+      i ? ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    ctx.fillStyle = 'rgba(159, 122, 234, .55)'; ctx.fill();
+    ctx.strokeStyle = '#d6bcfa'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = '#553c9a'; ctx.beginPath(); ctx.arc(0, 0, S * .3, 0, 6.28); ctx.fill();
+  } else if (p.type === 'hidra') {
+    // Tentáculos que ondulan hasta su alcance
+    ctx.strokeStyle = 'rgba(104, 211, 145, .7)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    for (let k = 0; k < 7; k++) {
+      const a = k / 7 * 6.28 + Math.sin(t * .7) * .2;
+      ctx.beginPath(); ctx.moveTo(0, 0);
+      for (let i = 1; i <= 8; i++) {
+        const r = i / 8 * T.reach * (digesting ? .5 : 1);
+        const off = Math.sin(t * 2 + i * .8 + k) * 0.18;
+        ctx.lineTo(Math.cos(a + off) * r, Math.sin(a + off) * r);
+      }
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#2f855a'; ctx.beginPath(); ctx.arc(0, 0, S, 0, 6.28); ctx.fill();
+    ctx.strokeStyle = '#9ae6b4'; ctx.lineWidth = 1.5; ctx.stroke();
+  } else {
+    // Didinio: barril rojo con anillos de cilios y "trompa"
+    ctx.rotate(p.angle);
+    ctx.strokeStyle = 'rgba(254, 178, 178, .8)'; ctx.lineWidth = 1;
+    for (let i = 0; i < 16; i++) {
+      const a = i / 16 * 6.28;
+      const w = Math.sin(t * 20 + i) * 2;
+      ctx.beginPath(); ctx.moveTo(Math.cos(a) * S, Math.sin(a) * S * .8);
+      ctx.lineTo(Math.cos(a) * (S + 4 + w), Math.sin(a) * (S * .8 + 4 + w)); ctx.stroke();
+    }
+    ctx.fillStyle = '#c53030'; ctx.beginPath(); ctx.ellipse(0, 0, S, S * .8, 0, 0, 6.28); ctx.fill();
+    ctx.fillStyle = '#feb2b2'; ctx.beginPath(); ctx.moveTo(S, -3); ctx.lineTo(S + 7, 0); ctx.lineTo(S, 3); ctx.fill();
+  }
   ctx.restore();
+  if (digesting) {
+    ctx.font = '11px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,255,255,.7)';
+    ctx.fillText('zzz', p.x, p.y - S - 8);
+  }
 }
 
-/* Línea guía hacia la comida visible más cercana. */
-function drawTargetHint() {
-  const f = nearestVisibleFood();
-  if (!f) return;
-  const p = state.player;
-  ctx.save();
-  ctx.setLineDash([3, 6]);
-  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-  ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(f.x, f.y); ctx.stroke();
-  ctx.restore();
-}
-
-function render() {
-  drawBackground();
+function render(dt) {
+  t += dt;
+  drawBackground(dt);
   state.foods.forEach(drawFood);
-  drawTargetHint();
-
-  const R = stat('size');
-  state.phase === 1 ? drawCell(state.player, R) : drawCreature(state.player, R);
+  state.predators.filter(p => p.type === 'hidra').forEach(drawPredator);
+  state.cells.forEach(drawCell);
+  state.predators.filter(p => p.type !== 'hidra').forEach(drawPredator);
 
   // Partículas
-  for (const pt of state.particles) {
-    ctx.globalAlpha = Math.max(0, pt.life / 0.6);
-    ctx.fillStyle = pt.color;
-    ctx.beginPath(); ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2); ctx.fill();
+  for (const p of fx.particles) {
+    p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .92; p.vy *= .92; p.life -= dt;
+    ctx.globalAlpha = Math.max(0, p.life / .7); ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 2.5, 0, 6.28); ctx.fill();
+  }
+  fx.particles = fx.particles.filter(p => p.life > 0);
+
+  // Destello de radiación
+  if (fx.flash) {
+    const f = fx.flash;
+    ctx.globalAlpha = f.t * .6; ctx.fillStyle = '#d6f35a';
+    ctx.beginPath(); ctx.arc(f.x, f.y, RAD_RADIUS * (1.3 - f.t * .3), 0, 6.28); ctx.fill();
+    f.t -= dt * 1.2; if (f.t <= 0) fx.flash = null;
   }
   ctx.globalAlpha = 1;
 
-  drawVisionFog();
-
-  // Textos "+1 ADN"
-  ctx.font = 'bold 14px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  for (const fl of state.floaters) {
-    ctx.globalAlpha = Math.min(1, fl.life * 1.5);
-    ctx.fillStyle = '#81e6d9';
-    ctx.fillText(fl.text, fl.x, fl.y);
+  // Previsualización del área de radiación bajo el cursor
+  if (input.aiming && fx.hover) {
+    ctx.save(); ctx.setLineDash([5, 5]);
+    ctx.strokeStyle = '#d6f35a'; ctx.fillStyle = 'rgba(214, 243, 90, .12)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(fx.hover.x, fx.hover.y, RAD_RADIUS, 0, 6.28); ctx.fill(); ctx.stroke();
+    ctx.restore();
   }
+
+  // Textos flotantes
+  ctx.font = 'bold 13px system-ui'; ctx.textAlign = 'center';
+  for (const f of fx.floaters) {
+    f.y -= 28 * dt; f.life -= dt;
+    ctx.globalAlpha = Math.max(0, Math.min(1, f.life * 1.5)); ctx.fillStyle = f.color;
+    ctx.fillText(f.text, f.x, f.y);
+  }
+  fx.floaters = fx.floaters.filter(f => f.life > 0);
   ctx.globalAlpha = 1;
 
-  if (state.paused) {
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 28px system-ui, sans-serif';
-    ctx.fillText('⏸️ Pausa', W / 2, H / 2);
+  if (state.speed === 0 && !state.over) {
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 26px system-ui'; ctx.fillText('⏸️ Pausa', W / 2, H / 2);
   }
 }
 
-// ---------- 6. INTERFAZ DEL PANEL ----------
+// ---------- 7. INTERFAZ ----------
 
 const $ = id => document.getElementById(id);
 
-/* Crea una tarjeta por cada mejora definida en UPGRADES. */
-function buildUpgradesUI() {
-  const box = $('upgrades');
+function fmtClock(min) {
+  const d = Math.floor(min / DAY) + 1, m = Math.floor(min % DAY);
+  return `Día ${d} · ${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+function fmtDur(min) {
+  min = Math.round(min);
+  if (min >= DAY) {
+    const d = Math.floor(min / DAY), h = Math.round((min % DAY) / 60);
+    if (d === 7 && !h) return '1 semana';
+    return `${d} ${d === 1 ? 'día' : 'días'}${h ? ` ${h} h` : ''}`;
+  }
+  if (min >= 60) { const h = Math.floor(min / 60), m = min % 60; return `${h} h${m ? ` ${m} min` : ''}`; }
+  return `${min} min`;
+}
+function fmtReal(ms) {
+  const s = Math.round(ms / 1000);
+  if (s >= 3600) return `${Math.floor(s / 3600)} h ${Math.floor(s % 3600 / 60)} min`;
+  if (s >= 60) return `${Math.floor(s / 60)} min`;
+  return `${s} s`;
+}
+
+function buildUI() {
+  // Mejoras
   for (const [key, up] of Object.entries(UPGRADES)) {
     const el = document.createElement('div');
-    el.className = 'upgrade';
+    el.className = 'item';
     el.innerHTML = `
       <span class="name">${up.name} <small id="lvl-${key}" style="color:var(--muted)"></small></span>
       <button class="buy" id="buy-${key}"></button>
       <div class="pips" id="pips-${key}">${'<i></i>'.repeat(MAX_LEVEL)}</div>
       <span class="desc">${up.desc}</span>`;
-    box.appendChild(el);
-    el.querySelector('button').addEventListener('click', () => buyUpgrade(key));
+    $('upgrades').appendChild(el);
+    el.querySelector('button').onclick = () => buyUpgrade(key);
   }
+  // Depredadores
+  for (const [key, P] of Object.entries(PREDATORS)) {
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.innerHTML = `
+      <span class="name">${P.name} <small id="pc-${key}" style="color:var(--muted)"></small></span>
+      <button class="btn" id="pred-${key}">🧬 ${P.cost}</button>
+      <span class="desc">${P.desc}</span>`;
+    $('predators').appendChild(el);
+    el.querySelector('button').onclick = () => releasePredator(key);
+  }
+  $('rad-btn').onclick = () => setAiming(!input.aiming);
+  document.querySelectorAll('#speeds button').forEach(b => b.onclick = () => setSpeed(+b.dataset.speed));
+  document.querySelectorAll('#jumps button').forEach(b => b.onclick = () => timeJump(+b.dataset.min));
+  $('add-m').onclick = () => addSpecimen('M');
+  $('add-f').onclick = () => addSpecimen('F');
+  $('evolve').onclick = evolve;
+  $('m-close').onclick = closeModal;
+  $('reset').onclick = () => { if (confirm('¿Empezar una partida nueva? Se perderá la colonia actual.')) restart(); };
 }
 
 function buyUpgrade(key) {
-  if (state.levels[key] >= MAX_LEVEL) return;
-  const c = cost(key);
-  if (state.dna < c) return;
-  state.dna -= c;
-  state.levels[key] += 1;
+  if (state.levels[key] >= MAX_LEVEL || state.dna < upgradeCost(key)) return;
+  state.dna -= upgradeCost(key);
+  state.levels[key]++;
   updateUI();
 }
 
-/* Refresca todos los textos y botones del panel con el estado actual. */
-function updateUI() {
-  $('dna').innerHTML = `${state.dna} <span>ADN</span>`;
-  $('phase-label').textContent = PHASES[state.phase].label;
-
-  // Progreso hacia la evolución (solo en la Fase 1)
-  if (state.phase === 1) {
-    $('progress').style.width = Math.min(100, (state.dna / EVOLVE_AT) * 100) + '%';
-    const left = EVOLVE_AT - state.dna;
-    $('goal-hint').textContent = left > 0
-      ? `Faltan ${left} ADN para evolucionar (gastar en mejoras lo retrasa)`
-      : '¡Listo para evolucionar!';
-    $('evolve').classList.toggle('hidden', state.dna < EVOLVE_AT);
-  } else {
-    $('progress').style.width = '100%';
-    $('goal-hint').textContent = 'Has conquistado la tierra firme 🌍 ¡Sigue evolucionando!';
-    $('evolve').classList.add('hidden');
-  }
-
-  for (const key of Object.keys(UPGRADES)) {
-    const lvl = state.levels[key];
-    const btn = $('buy-' + key);
-    const maxed = lvl >= MAX_LEVEL;
-    btn.textContent = maxed ? 'MÁX' : `🧬 ${cost(key)}`;
-    btn.disabled = maxed || state.dna < cost(key);
-    $('lvl-' + key).textContent = `Nv ${lvl}`;
-    $('pips-' + key).querySelectorAll('i').forEach((pip, i) => pip.classList.toggle('on', i < lvl));
-  }
-
-  $('stat-speed').textContent = Math.round(stat('speed')) + ' px/s';
-  $('stat-size').textContent = Math.round(stat('size')) + ' px';
-  $('stat-vision').textContent = Math.round(stat('vision')) + ' px';
-  $('stat-eaten').textContent = state.eaten;
+function addSpecimen(sex) {
+  if (state.dna < ADD_COST || state.over) return;
+  state.dna -= ADD_COST;
+  const c = makeCell(sex);
+  c.eaten = 0;
+  state.cells.push(c);
+  burst(c.x, c.y, sex === 'M' ? '#90cdf4' : '#fbb6ce', 14);
+  floater(c.x, c.y - 15, sex === 'M' ? 'Nuevo ♂' : 'Nueva ♀', '#fff');
+  checkOver();
+  updateUI();
 }
 
-/* Paso de fase: la célula sale del agua y se convierte en criatura terrestre.
-   Las mejoras se conservan; el ADN se gasta en la evolución. */
+function releasePredator(key) {
+  const P = PREDATORS[key];
+  if (state.dna < P.cost || state.over) return;
+  state.dna -= P.cost;
+  state.predators.push({
+    type: key, x: rand(40, W - 40), y: rand(40, H - 40), vx: 0, vy: 0,
+    angle: 0, wander: rand(0, 6.28), age: 0, cooldown: 5, sinceMeal: 0,
+  });
+  const p = state.predators[state.predators.length - 1];
+  burst(p.x, p.y, P.color, 16);
+  updateUI();
+}
+
+function setAiming(on) {
+  input.aiming = on && state.dna >= RAD_COST && !state.over;
+  canvas.classList.toggle('aiming', input.aiming);
+  $('aim-hint').classList.toggle('hidden', !input.aiming);
+  $('rad-btn').classList.toggle('on', input.aiming);
+}
+
+function setSpeed(s) {
+  state.speed = s;
+  document.querySelectorAll('#speeds button').forEach(b => b.classList.toggle('on', +b.dataset.speed === s));
+}
+
 function evolve() {
   if (state.phase !== 1 || state.dna < EVOLVE_AT) return;
   state.phase = 2;
   state.dna -= EVOLVE_AT;
   state.foods = [];
-  state.particles = [];
   buildDecor();
-  // Explosión de partículas para celebrar
-  for (let i = 0; i < 60; i++) {
-    const a = rand(0, Math.PI * 2), s = rand(60, 260);
-    state.particles.push({ x: state.player.x, y: state.player.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rand(.4, .9), color: '#fbd38d' });
-  }
-  showBanner('🦎 ¡Fase 2: Criatura Terrestre!', 'Ahora recolectas bayas en tierra firme');
+  for (const c of state.cells) burst(c.x, c.y, '#fbd38d', 8);
+  showBanner('🦎 ¡Fase 2: Criaturas Terrestres!', 'Toda la colonia ha salido del agua');
   updateUI();
 }
 
-function showBanner(title, subtitle) {
-  $('banner-text').innerHTML = `${title}<small>${subtitle}</small>`;
+function showBanner(title, sub) {
+  $('banner-text').innerHTML = `${title}<small>${sub}</small>`;
   $('banner').classList.add('show');
   clearTimeout(showBanner.timer);
   showBanner.timer = setTimeout(() => $('banner').classList.remove('show'), 2600);
 }
 
-function togglePause() {
-  state.paused = !state.paused;
-  $('pause').textContent = state.paused ? '▶️ Reanudar' : '⏸️ Pausar';
+/* Refresca todo el panel. Se llama tras cada cambio relevante y unas veces por segundo. */
+function updateUI() {
+  const dna = Math.floor(state.dna);
+  $('phase-label').textContent = PHASES[state.phase].label;
+  $('dna').innerHTML = `${dna} <span>ADN</span>`;
+
+  // Población
+  const cells = state.cells, n = cells.length;
+  const count = fn => cells.filter(fn).length;
+  $('pop').innerHTML = `${n} <span>/ ${PLAGUE_LIMIT}</span>`;
+  const ratio = n / PLAGUE_LIMIT;
+  $('pop-bar').style.width = Math.min(100, ratio * 100) + '%';
+  $('pop-bar').style.background = ratio > .75 ? 'var(--danger)' : ratio > .5 ? 'var(--accent-2)' : 'var(--accent)';
+  $('pop-chips').innerHTML = `
+    <span class="m">♂ ${count(c => c.sex === 'M')}</span>
+    <span class="f">♀ ${count(c => c.sex === 'F')}</span>
+    <span>🥚 crías ${count(c => stageOf(c) === 'cría')}</span>
+    <span>💪 adultas ${count(c => stageOf(c) === 'adulta')}</span>
+    <span>👴 viejas ${count(c => stageOf(c) === 'vieja')}</span>
+    <span>☢ estériles ${count(c => c.sterile)}</span>
+    <span>🧬 gen. máx ${state.stats.maxGen}</span>
+    <span>☠️ depredadores ${state.predators.length}</span>`;
+  const sexes = new Set(cells.map(c => c.sex));
+  $('pop-hint').textContent = n > 0 && sexes.size < 2
+    ? `Solo hay ${cells[0].sex === 'M' ? 'machos' : 'hembras'}: añade un ejemplar del otro sexo para que empiece la reproducción.`
+    : ratio > .75 ? '⚠️ ¡La población se está descontrolando! Usa depredadores o radiación.'
+    : `Adultas con ${ADULT_AT} de comida · ${MAX_BREEDS} camadas por célula · luego envejecen.`;
+  $('add-m').textContent = `+ ♂ Macho (🧬${ADD_COST})`;
+  $('add-f').textContent = `+ ♀ Hembra (🧬${ADD_COST})`;
+  $('add-m').disabled = $('add-f').disabled = dna < ADD_COST || !!state.over;
+
+  // Evolución de fase
+  if (state.phase === 1) {
+    $('goal-hint').textContent = dna >= EVOLVE_AT ? '¡Puedes evolucionar a criatura terrestre!' : `Las crías dan 1 ADN por comida mientras crecen. Con ${EVOLVE_AT} puedes evolucionar.`;
+    $('evolve').classList.toggle('hidden', dna < EVOLVE_AT);
+  } else {
+    $('goal-hint').textContent = 'Colonia terrestre 🌍 · Las crías dan 1 ADN por baya mientras crecen.';
+    $('evolve').classList.add('hidden');
+  }
+
+  // Mejoras
+  for (const key of Object.keys(UPGRADES)) {
+    const lvl = state.levels[key], maxed = lvl >= MAX_LEVEL;
+    $('buy-' + key).textContent = maxed ? 'MÁX' : `🧬 ${upgradeCost(key)}`;
+    $('buy-' + key).disabled = maxed || dna < upgradeCost(key);
+    $('lvl-' + key).textContent = `Nv ${lvl}`;
+    $('pips-' + key).querySelectorAll('i').forEach((p, i) => p.classList.toggle('on', i < lvl));
+  }
+
+  // Depredadores y radiación
+  for (const [key, P] of Object.entries(PREDATORS)) {
+    $('pred-' + key).disabled = dna < P.cost || !!state.over;
+    const active = state.predators.filter(p => p.type === key).length;
+    $('pc-' + key).textContent = active ? `×${active} activos` : '';
+  }
+  $('rad-btn').textContent = input.aiming ? 'Cancelar' : `🧬 ${RAD_COST}`;
+  $('rad-btn').disabled = (dna < RAD_COST && !input.aiming) || !!state.over;
+  document.querySelectorAll('#jumps button').forEach(b => b.disabled = !!state.over);
+
+  // Ficha de la célula seleccionada
+  const sel = cells.find(c => c.id === state.selected);
+  $('selected-card').classList.toggle('hidden', !sel);
+  if (sel) {
+    const st = stageOf(sel);
+    $('selected-info').innerHTML = `
+      <div class="kv">
+        <span>Sexo</span><b class="${sel.sex === 'M' ? 'm' : 'f'}">${sel.sex === 'M' ? '♂ Macho' : '♀ Hembra'}</b>
+        <span>Etapa</span><b>${st}${sel.sterile ? ' · ☢ estéril' : ''}</b>
+        <span>Generación</span><b>${sel.gen}</b>
+        <span>Edad</span><b>${fmtDur(sel.age)} / ${fmtDur(MAX_AGE)}</b>
+        <span>Crecimiento</span><b>${Math.min(ADULT_AT, Math.floor(sel.eaten))} / ${ADULT_AT}</b>
+        <div class="mini-bar"><div style="width:${Math.min(100, sel.eaten / ADULT_AT * 100)}%"></div></div>
+        <span>Camadas</span><b>${sel.breeds} / ${MAX_BREEDS}</b>
+        <span>Energía</span><b>${Math.round(sel.energy)}%</b>
+        <div class="mini-bar"><div style="width:${sel.energy}%;background:${sel.energy < 30 ? 'var(--danger)' : 'var(--accent)'}"></div></div>
+      </div>`;
+  }
+
+  $('clock').innerHTML = `🕒 ${fmtClock(state.clock)} <small>${state.speed ? `· x${state.speed}` : '· en pausa'}</small>`;
+
+  if (state.over && $('modal').classList.contains('hidden') && !updateUI.overShown) {
+    updateUI.overShown = true;
+    showGameOver();
+  }
 }
 
-$('evolve').addEventListener('click', evolve);
-$('pause').addEventListener('click', togglePause);
+/* ---------- Informe (modal) con gráfica de población ---------- */
 
-// ---------- 7. BUCLE PRINCIPAL ----------
+let chartData = null;
 
-/* Ajusta el canvas a su contenedor respetando la densidad de píxeles
-   de la pantalla (para que se vea nítido en móviles / retina). */
+function showReport(title, sub, rep) {
+  $('m-title').textContent = title;
+  $('m-sub').textContent = sub;
+  $('m-alert').innerHTML = state.over ? overAlert() : '';
+  const d = rep.deaths;
+  const totalDeaths = d.hambre + d.vejez + d.depredador + d.radiacion;
+  $('m-stats').innerHTML = `
+    <div>Población<b>${rep.popBefore} → ${rep.popAfter}</b></div>
+    <div>Pico<b>${rep.peak}</b></div>
+    <div>Nacimientos<b>${rep.births}</b></div>
+    <div>Muertes<b>${totalDeaths}</b></div>
+    <div>🍽️ Hambre<b>${d.hambre}</b></div>
+    <div>👴 Vejez<b>${d.vejez}</b></div>
+    <div>☠️ Depredadores<b>${d.depredador}</b></div>
+    <div>🧬 ADN ganado<b>+${rep.dna}</b></div>
+    <div>Generación máx.<b>${rep.maxGen}</b></div>`;
+  $('m-chart-wrap').classList.remove('hidden');
+  $('m-close').textContent = state.over ? 'Nueva partida' : 'Continuar';
+  $('modal').classList.remove('hidden');
+  if (state.over) updateUI.overShown = true;
+  chartData = rep.samples;
+  drawChart(null);
+}
+
+function overAlert() {
+  return state.over === 'plaga'
+    ? `<div class="alert bad">🐀 ¡PLAGA! La colonia llegó a ${PLAGUE_LIMIT} células y se descontroló. Fin de la partida.</div>`
+    : `<div class="alert bad">💀 ¡EXTINCIÓN! No queda ninguna célula. Fin de la partida.</div>`;
+}
+
+function showGameOver() {
+  $('m-title').textContent = state.over === 'plaga' ? '🐀 Plaga' : '💀 Extinción';
+  $('m-sub').textContent = `${fmtClock(state.clock)} · Generación máxima: ${state.stats.maxGen}`;
+  $('m-alert').innerHTML = overAlert();
+  const d = state.stats.deaths;
+  $('m-stats').innerHTML = `
+    <div>Nacimientos<b>${state.stats.births}</b></div>
+    <div>Comida total<b>${Math.floor(state.stats.food)}</b></div>
+    <div>🍽️ Hambre<b>${d.hambre}</b></div>
+    <div>👴 Vejez<b>${d.vejez}</b></div>
+    <div>☠️ Depredadores<b>${d.depredador}</b></div>
+    <div>☢️ Radiación<b>${d.radiacion}</b></div>`;
+  $('m-chart-wrap').classList.add('hidden');
+  $('m-close').textContent = 'Nueva partida';
+  $('modal').classList.remove('hidden');
+}
+
+function closeModal() {
+  $('modal').classList.add('hidden');
+  if (state.over) restart();
+}
+
+/* Gráfica de línea: población a lo largo del periodo + línea del límite de plaga.
+   Al pasar el ratón muestra el valor en ese instante. */
+function drawChart(hoverX) {
+  const cv = $('m-chart'), c2 = cv.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  cv.width = w * dpr; cv.height = h * dpr;
+  c2.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c2.clearRect(0, 0, w, h);
+  const data = chartData;
+  if (!data || data.length < 2) return;
+
+  const pad = { l: 34, r: 10, t: 10, b: 22 };
+  const pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
+  const tMax = data[data.length - 1].t || 1;
+  const yMax = Math.max(PLAGUE_LIMIT, ...data.map(d => d.n)) * 1.08;
+  const X = tt => pad.l + tt / tMax * pw;
+  const Y = n => pad.t + ph - n / yMax * ph;
+  const muted = '#8aa0b6', grid = 'rgba(138,160,182,.15)';
+
+  // Rejilla y eje Y
+  c2.font = '11px system-ui'; c2.fillStyle = muted; c2.textAlign = 'right'; c2.textBaseline = 'middle';
+  for (const v of [0, 50, 100, 150]) {
+    c2.strokeStyle = grid; c2.lineWidth = 1;
+    c2.beginPath(); c2.moveTo(pad.l, Y(v)); c2.lineTo(w - pad.r, Y(v)); c2.stroke();
+    c2.fillText(v, pad.l - 6, Y(v));
+  }
+  // Eje X: inicio y fin
+  c2.textBaseline = 'top';
+  c2.textAlign = 'left'; c2.fillText('ahora', pad.l, h - pad.b + 6);
+  c2.textAlign = 'right'; c2.fillText('+' + fmtDur(tMax), w - pad.r, h - pad.b + 6);
+
+  // Límite de plaga
+  c2.setLineDash([5, 4]); c2.strokeStyle = '#fc8181'; c2.lineWidth = 1.5;
+  c2.beginPath(); c2.moveTo(pad.l, Y(PLAGUE_LIMIT)); c2.lineTo(w - pad.r, Y(PLAGUE_LIMIT)); c2.stroke();
+  c2.setLineDash([]);
+  c2.fillStyle = muted; c2.textAlign = 'right'; c2.textBaseline = 'bottom';
+  c2.fillText('límite de plaga', w - pad.r, Y(PLAGUE_LIMIT) - 3);
+
+  // Serie de población
+  c2.strokeStyle = '#4fd1c5'; c2.lineWidth = 2; c2.lineJoin = 'round';
+  c2.beginPath();
+  data.forEach((d, i) => i ? c2.lineTo(X(d.t), Y(d.n)) : c2.moveTo(X(d.t), Y(d.n)));
+  c2.stroke();
+
+  // Capa de hover: línea vertical + punto + etiqueta
+  if (hoverX != null) {
+    const tt = clamp((hoverX - pad.l) / pw, 0, 1) * tMax;
+    let near = data[0];
+    for (const d of data) if (Math.abs(d.t - tt) < Math.abs(near.t - tt)) near = d;
+    const x = X(near.t), y = Y(near.n);
+    c2.strokeStyle = 'rgba(230,238,246,.35)'; c2.lineWidth = 1;
+    c2.beginPath(); c2.moveTo(x, pad.t); c2.lineTo(x, pad.t + ph); c2.stroke();
+    c2.fillStyle = '#4fd1c5'; c2.strokeStyle = '#121f2e'; c2.lineWidth = 2;
+    c2.beginPath(); c2.arc(x, y, 4.5, 0, 6.28); c2.fill(); c2.stroke();
+    const label = `+${fmtDur(near.t)}: ${near.n} células`;
+    c2.font = 'bold 12px system-ui';
+    const lw = c2.measureText(label).width + 12;
+    const lx = clamp(x - lw / 2, pad.l, w - pad.r - lw);
+    const ly = y - 28 < pad.t ? y + 10 : y - 28;
+    c2.fillStyle = 'rgba(11,22,34,.92)'; c2.fillRect(lx, ly, lw, 20);
+    c2.fillStyle = '#e6eef6'; c2.textAlign = 'left'; c2.textBaseline = 'middle';
+    c2.fillText(label, lx + 6, ly + 10);
+  }
+}
+$('m-chart').addEventListener('pointermove', e => drawChart(e.clientX - $('m-chart').getBoundingClientRect().left));
+$('m-chart').addEventListener('pointerleave', () => drawChart(null));
+
+// ---------- Entrada ----------
+
+const KEY_DIRS = {
+  ArrowUp: [0, -1], KeyW: [0, -1], ArrowDown: [0, 1], KeyS: [0, 1],
+  ArrowLeft: [-1, 0], KeyA: [-1, 0], ArrowRight: [1, 0], KeyD: [1, 0],
+};
+window.addEventListener('keydown', e => {
+  if (KEY_DIRS[e.code]) { input.keys.add(e.code); e.preventDefault(); }
+  if (e.code === 'KeyP') setSpeed(state.speed ? 0 : 1);
+  if (e.code === 'Escape') setAiming(false);
+});
+window.addEventListener('keyup', e => input.keys.delete(e.code));
+
+function pointerPos(e) {
+  const r = canvas.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+canvas.addEventListener('pointerdown', e => {
+  const pos = pointerPos(e);
+  if (input.aiming) { irradiate(pos.x, pos.y); return; }
+  // ¿Clic sobre una célula? → seleccionarla. Si no, guiar a la seleccionada.
+  const hit = state.cells.find(c => Math.hypot(c.x - pos.x, c.y - pos.y) < radiusOf(c) + 8);
+  if (hit) { state.selected = hit.id; updateUI(); return; }
+  input.pointer = pos;
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e => {
+  fx.hover = pointerPos(e);
+  if (input.pointer) input.pointer = fx.hover;
+});
+const releasePointer = () => { input.pointer = null; };
+canvas.addEventListener('pointerup', releasePointer);
+canvas.addEventListener('pointercancel', releasePointer);
+canvas.addEventListener('pointerleave', () => { fx.hover = null; });
+
+// ---------- 8. BUCLE PRINCIPAL Y ARRANQUE ----------
+
 function resize() {
   const rect = canvas.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
-  const firstTime = W === 0;
   W = rect.width; H = rect.height;
-  canvas.width = Math.round(W * dpr);
-  canvas.height = Math.round(H * dpr);
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  if (firstTime) { state.player.x = W / 2; state.player.y = H / 2; }
-  // Reubicar comida que quedó fuera tras redimensionar
-  for (const f of state.foods) { f.x = Math.min(f.x, W - 10); f.y = Math.min(f.y, H - 10); }
+  for (const o of [...state.foods, ...state.cells, ...state.predators]) { o.x = clamp(o.x, 10, W - 10); o.y = clamp(o.y, 10, H - 10); }
   buildDecor();
 }
 window.addEventListener('resize', resize);
 
+function restart() {
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  state = newState();
+  updateUI.overShown = false;
+  start(true);
+}
+
+/* Arranca una partida (nueva o cargada). */
+function start(isNew) {
+  if (isNew) {
+    const first = makeCell(null, W / 2, H / 2);   // célula inicial de sexo aleatorio
+    state.cells.push(first);
+    state.selected = first.id;
+    for (let i = 0; i < 25; i++) spawnFood();
+    showBanner(`🦠 Tu primera célula es ${first.sex === 'M' ? 'macho ♂' : 'hembra ♀'}`,
+               'Hazla crecer y añade un ejemplar del otro sexo para criar');
+  }
+  setSpeed(state.speed);
+  setAiming(false);
+  updateUI();
+  save();
+}
+
 let last = performance.now();
+let lastReal = Date.now();
+let uiTimer = 0, saveTimer = 0;
+
 function loop(now) {
-  // dt limitado para evitar saltos enormes al volver a la pestaña.
-  // Math.max(0, …): el primer timestamp de requestAnimationFrame puede
-  // ser anterior a performance.now() y daría un dt negativo.
   const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
   last = now;
-  if (!state.paused) update(dt);
-  render();
+
+  // Si la pestaña estuvo en segundo plano, el navegador congela el bucle:
+  // simulamos de golpe el tiempo perdido.
+  const realNow = Date.now();
+  if (realNow - lastReal > 3000 && state.speed > 0) catchUp(realNow - lastReal, '💤 Mientras no mirabas…');
+  lastReal = realNow;
+
+  if (state.speed > 0 && !state.over && $('modal').classList.contains('hidden')) {
+    // Velocidades altas = varios pasos pequeños por fotograma (física estable)
+    for (let i = 0; i < state.speed && !state.over; i++) liveStep(dt);
+  }
+  render(dt);
+
+  uiTimer += dt; saveTimer += dt;
+  if (uiTimer > 0.25) { uiTimer = 0; updateUI(); }
+  if (saveTimer > 5) { saveTimer = 0; save(); }
   requestAnimationFrame(loop);
 }
 
-// Arranque
-buildUpgradesUI();
+window.addEventListener('pagehide', save);
+document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+
+// Arranque: cargar la partida guardada (si existe) y simular el tiempo de ausencia
+buildUI();
+const saved = load();
+state = saved || newState();
 resize();
-for (let i = 0; i < 10; i++) spawnFood(); // algo de comida inicial
-updateUI();
-showBanner('🦠 Fase 1: Célula', 'Come nutrientes para conseguir ADN');
+if (saved) {
+  const awayMs = Date.now() - saved.savedAt; // antes de start(), que vuelve a guardar
+  start(false);
+  catchUp(awayMs, '💤 Mientras no estabas…');
+} else {
+  start(true);
+}
 requestAnimationFrame(loop);
 
-// Acceso desde la consola del navegador (útil para depurar o hacer trampas 😉)
-window.evo = { state, evolve, buyUpgrade, updateUI };
+// Acceso desde la consola (depuración / trampas 😉)
+window.evo = { get state() { return state; }, fastForward, timeJump, catchUp, irradiate, releasePredator, addSpecimen, updateUI, save };
 </script>
 </body>
 </html>
