@@ -177,6 +177,21 @@
   #m-chart { width: 100%; height: 180px; display: block; margin-top: 6px; }
   #m-close { margin-top: 16px; width: 100%; padding: 12px; background: var(--accent); color: #062621; font-weight: 800; }
 
+
+  /* Recintos, linajes y sucesos */
+  .btn.build { border-color: #c4a77d; color: #e2c9a0; width: 100%; }
+  .btn.build.on { background: #c4a77d; color: #2a1d0b; }
+  .enc-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .enc-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #0d1824; border-radius: 8px; padding: 6px 8px; font-size: 12px; }
+  .enc-row button { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 3px 8px; font-size: 12px; }
+  .lin { background: #0d1824; border: 1px solid transparent; color: var(--text); border-radius: 6px; padding: 3px 7px; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .lin.on { border-color: var(--text); }
+  .events { list-style: none; display: flex; flex-direction: column; gap: 5px; font-size: 12px; max-height: 190px; overflow-y: auto; }
+  .events li { line-height: 1.35; }
+  .events time { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 4px; }
+  .traits { display: flex; flex-wrap: wrap; gap: 4px; grid-column: 1 / -1; margin-top: 2px; }
+  .traits span { background: #0d1824; border-radius: 6px; padding: 2px 6px; font-size: 12px; }
+
   @media (max-width: 760px) {
     body { flex-direction: column; overflow: auto; }
     #game-area { height: 60vh; flex: none; }
@@ -190,7 +205,7 @@
 <main id="game-area">
   <canvas id="game"></canvas>
   <div id="clock"></div>
-  <div id="aim-hint" class="hidden">☢️ Haz clic en el estanque para inyectar radiación · <kbd>Esc</kbd> cancela</div>
+  <div id="aim-hint" class="hidden"></div>
   <div id="banner"><div id="banner-text"></div></div>
 </main>
 
@@ -200,6 +215,13 @@
     <h1>🧬 Simulador de Evolución</h1>
     <span class="phase" id="phase-label"></span>
   </header>
+
+  <!-- ADN: la moneda para todo -->
+  <section class="card">
+    <div class="dna-count" id="dna">0 <span>ADN</span></div>
+    <div class="hint" id="goal-hint"></div>
+  </section>
+  <button id="evolve" class="hidden">🦎 Evolucionar a Criatura Terrestre</button>
 
   <!-- Velocidad del tiempo en directo -->
   <section class="card">
@@ -242,12 +264,26 @@
     </div>
   </section>
 
-  <!-- ADN -->
-  <section class="card">
-    <div class="dna-count" id="dna">0 <span>ADN</span></div>
-    <div class="hint" id="goal-hint"></div>
+  <!-- Ficha de la célula seleccionada -->
+  <section class="card" id="selected-card">
+    <div class="section-title" id="selected-title">Célula seleccionada</div>
+    <div id="selected-info"></div>
   </section>
-  <button id="evolve" class="hidden">🦎 Evolucionar a Criatura Terrestre</button>
+
+  <!-- Recintos -->
+  <section class="card">
+    <div class="section-title">🧱 Recintos</div>
+    <button class="btn build" id="build-btn"></button>
+    <div class="enc-list" id="enclosures"></div>
+    <div class="hint">Arrastra en el estanque para levantar los muros. Luego coge células con las pinzas (arrástralas) y suéltalas dentro. Dentro cae comida según el tamaño del recinto: si se llena, llega el hambre… y el canibalismo.</div>
+  </section>
+
+  <!-- Linajes -->
+  <section class="card">
+    <div class="section-title">🧬 Linajes</div>
+    <div class="chips" id="lineages"></div>
+    <div class="hint">La marca de la espalda indica el linaje (por línea materna). Toca uno para resaltar a sus miembros.</div>
+  </section>
 
   <!-- Control de población -->
   <section class="card">
@@ -256,7 +292,7 @@
     <div class="item">
       <span class="name">☢️ Inyección de radiación</span>
       <button class="btn rad" id="rad-btn"></button>
-      <span class="desc">Elige un punto del estanque: la mitad de las células de la zona muere y las supervivientes quedan estériles.</span>
+      <span class="desc">Elige un punto del estanque: la mitad de la zona muere. Las supervivientes suelen quedar estériles… pero alguna puede mutar en gigante o en monstruo.</span>
     </div>
     <div class="item">
       <span class="name">☣️ Veneno <small id="bait-count" style="color:var(--muted)"></small></span>
@@ -265,24 +301,24 @@
     </div>
   </section>
 
+  <!-- Sucesos destacados -->
+  <section class="card">
+    <div class="section-title">📜 Sucesos</div>
+    <ul class="events" id="events"></ul>
+  </section>
+
   <!-- Mejoras de la especie -->
   <section class="card">
     <div class="section-title">Evolución de la especie</div>
     <div id="upgrades"></div>
   </section>
 
-  <!-- Ficha de la célula seleccionada -->
-  <section class="card" id="selected-card">
-    <div class="section-title">Célula seleccionada</div>
-    <div id="selected-info"></div>
-  </section>
-
   <section class="controls">
     <b>Controles</b><br>
-    🖱️ Clic en una célula para seleccionarla.<br>
-    👆 Mantén pulsado (o arrastra) en el estanque para guiar a la seleccionada.<br>
-    ⌨️ <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>/flechas la mueven · <kbd>P</kbd> pausa.<br>
-    🤖 El resto de células comen, buscan pareja y huyen solas.
+    🖐️ Arrastra una célula (o un depredador) para moverla con las pinzas.<br>
+    🖱️ Clic en una célula para ver su ficha.<br>
+    👆 Mantén pulsado en el agua para guiar a la seleccionada.<br>
+    ⌨️ <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>/flechas la mueven · <kbd>P</kbd> pausa · <kbd>Esc</kbd> cancela herramienta.
   </section>
 
   <button class="secondary" id="reset">↺ Nueva partida</button>
@@ -308,23 +344,28 @@
    SIMULADOR DE EVOLUCIÓN — COLONIA
    -----------------------------------------------------------------
    Idea clave: hay UNA sola lógica de vida (hambre, crecimiento,
-   reproducción, vejez, muerte) que se usa de dos maneras:
+   reproducción, vejez, muerte, mutaciones) que se usa de dos maneras:
 
-   · En directo: las células se mueven por el canvas y comen y se
-     aparean al tocarse (física).
+   · En directo: las células se mueven por el canvas y comen, se
+     aparean y se devoran al tocarse (física).
    · Avance rápido (saltos en el tiempo y tiempo fuera de la página):
      se simula minuto a minuto con un modelo estadístico, sin dibujar,
      para poder calcular días en milisegundos.
+
+   El estanque se divide en ZONAS: la zona 0 es el agua libre y cada
+   recinto es otra zona. Comer, aparearse, cazar y devorarse solo
+   ocurre entre seres de la misma zona.
 
    Secciones:
      1. Configuración y escala temporal
      2. Estado y guardado
      3. Reglas de vida (compartidas)
-     4. Simulación en directo
-     5. Avance rápido (salto en el tiempo / ausencia)
-     6. Dibujo
-     7. Interfaz
-     8. Bucle principal y arranque
+     4. Zonas y recintos
+     5. Simulación en directo
+     6. Avance rápido (salto en el tiempo / ausencia / pronóstico)
+     7. Dibujo
+     8. Interfaz
+     9. Entrada, bucle principal y arranque
    ================================================================= */
 
 // ---------- 1. CONFIGURACIÓN Y ESCALA TEMPORAL ----------
@@ -349,11 +390,21 @@ const ENERGY_MAX = 100;
 const ENERGY_PER_FOOD = 20;
 const ENERGY_DECAY = 0.8;     // energía que se gasta por minuto (sin comer: ~2 h de vida)
 
-const FOOD_RATE = 6;          // comida nueva por minuto de juego
+const HUNGRY = 30;            // con menos energía, un adulto sin comida a mano devora crías
+const CANNIBAL_RATE = 1 / 15; // probabilidad/minuto de que un adulto hambriento devore una cría (avance rápido)
+const MONSTER_HUNGRY = 70;    // un monstruo caza congéneres por debajo de esta energía
+const MUTATION_CHANCE = 0.06; // probabilidad de mutación nueva en cada cría
+
+const FOOD_RATE = 6;          // comida nueva por minuto de juego (en todo el estanque)
 const FOOD_CAP = 120;         // comida máxima en el estanque
 const PLAGUE_LIMIT = 150;     // ¡si se llega aquí, la colonia es una plaga y se pierde!
 const EVOLVE_AT = 50;         // ADN para pasar a la Fase 2
 const ADD_COST = 10;          // ADN por añadir un ejemplar
+const BUILD_COST = 20;        // ADN por levantar un recinto
+const MAX_ENCLOSURES = 4;
+const MIN_ENCLOSURE = 80;     // lado mínimo de un recinto (px)
+const WALL = 6;               // grosor del muro (px)
+const EDGE_GAP = 26;          // los recintos dejan pasillo con el borde y entre sí
 const RAD_COST = 50;          // ADN por inyección de radiación
 const RAD_RADIUS = 90;        // px
 const POISON_COST = 30;       // ADN por tanda de veneno
@@ -364,6 +415,7 @@ const FORECAST_SPAN = 3 * DAY;  // horizonte del pronóstico
 const FORECAST_RUNS = 3;        // simulaciones por pronóstico (el azar cuenta)
 const MAX_OFFLINE = 30 * DAY; // tope de tiempo simulado al volver (por rendimiento)
 const MAX_LEVEL = 8;
+const MAX_EVENTS = 14;
 
 /* Mejoras de la especie (afectan a todas las células, también a las futuras).
    coste = base + nivel * step */
@@ -372,6 +424,28 @@ const UPGRADES = {
   size:   { name: '🔵 Tamaño',    desc: 'Atrapan comida más fácil, pero gastan más energía.',   base: 5, step: 5, value: l => 12 + l * 3.5 },
   vision: { name: '👁️ Visión',   desc: 'Detectan comida, pareja y peligro desde más lejos.',   base: 5, step: 5, value: l => 110 + l * 35 },
 };
+
+/* Mutaciones: aparecen al azar en las crías (o por radiación) y se heredan:
+   cada progenitor que la tenga la transmite con un 50% de probabilidad. */
+const TRAITS = {
+  albina:   { name: 'Albina',   icon: '⚪', desc: 'Color blanco.' },
+  dorada:   { name: 'Dorada',   icon: '🟡', desc: 'Color dorado.' },
+  espinosa: { name: 'Espinosa', icon: '🌵', desc: 'Púas: los depredadores fallan la mitad de las veces.' },
+  gigante:  { name: 'Gigante',  icon: '⬆️', desc: '35% más grande; gasta más energía.' },
+  veloz:    { name: 'Veloz',    icon: '💨', desc: 'Doble flagelo: 25% más rápida.' },
+  fertil:   { name: 'Fértil',   icon: '🥚', desc: 'Camadas de 2 o 3 crías.' },
+  longeva:  { name: 'Longeva',  icon: '⏳', desc: 'Vive un 50% más.' },
+  inmune:   { name: 'Inmune',   icon: '🛡️', desc: 'El veneno no le hace nada.' },
+  monstruo: { name: 'Monstruo', icon: '👹', desc: 'Mutante radiactivo: enorme, devora congéneres y mata a los depredadores que lo atacan.' },
+};
+const RANDOM_TRAITS = Object.keys(TRAITS).filter(k => k !== 'monstruo'); // el monstruo solo nace de la radiación
+
+/* Marcas de linaje: cada fundador (la célula inicial y cada ejemplar añadido)
+   abre un linaje con una letra, un color y un símbolo. Las crías heredan
+   el de la madre. */
+const LINEAGE_COLORS = ['#f6e05e', '#68d391', '#f6ad55', '#b794f4', '#4fd1c5', '#fc8181', '#90cdf4', '#fbb6ce'];
+const LINEAGE_GLYPHS = ['circle', 'triangle', 'square', 'diamond', 'star', 'cross'];
+const GLYPH_CHARS = { circle: '●', triangle: '▲', square: '■', diamond: '◆', star: '★', cross: '✚' };
 
 /* Depredadores que el jugador puede soltar para controlar la población.
    No se reproducen: hay que volver a comprarlos cuando mueren. */
@@ -385,7 +459,7 @@ const PREDATORS = {
   hidra: {
     name: '🌿 Hidra', cost: 60, color: '#68d391', size: 15, speed: 0, reach: 75,
     digest: 25, life: 3 * DAY, starve: 0, huntRate: 1 / 20, densRef: 50, sense: 75,
-    desc: 'Inmóvil. Atrapa con sus tentáculos a quien pase cerca. Vive 3 días.',
+    desc: 'Inmóvil. Atrapa con sus tentáculos a quien pase cerca. Vive 3 días. Puedes moverla con las pinzas.',
     prey: () => true,
   },
   didinio: {
@@ -397,8 +471,8 @@ const PREDATORS = {
 };
 
 const PHASES = {
-  1: { label: 'Fase 1 · Células',            bgTop: '#0e2a3f', bgBottom: '#06121c' },
-  2: { label: 'Fase 2 · Criaturas Terrestres', bgTop: '#5a7d3a', bgBottom: '#3d5a28' },
+  1: { label: 'Fase 1 · Células',              bgTop: '#0e2a3f', bgBottom: '#06121c', wall: '#7fb3d5', wallDark: '#2c5282' },
+  2: { label: 'Fase 2 · Criaturas Terrestres', bgTop: '#5a7d3a', bgBottom: '#3d5a28', wall: '#c4a77d', wallDark: '#6b4f2a' },
 };
 
 const SAVE_KEY = 'evo-sim-colonia-v1';
@@ -428,11 +502,18 @@ function newState() {
     cells: [],
     predators: [],
     foods: [],
-    baits: [],                 // cebos envenenados {x, y, expires}
+    baits: [],                 // cebos envenenados {x, y, zone, expires}
+    enclosures: [],            // recintos {id, x, y, w, h} (rectángulo exterior del muro)
+    lineages: [],              // {id, letter, color, glyph, founder, born, extinct}
+    events: [],                // sucesos destacados {t, text, key, n}
     foodAcc: 0,                // fracción acumulada de comida por aparecer
     nextId: 1,
+    nextEnc: 1,
     selected: null,
-    stats: { births: 0, food: 0, maxGen: 1, deaths: { hambre: 0, vejez: 0, depredador: 0, radiacion: 0, veneno: 0 } },
+    stats: {
+      births: 0, food: 0, maxGen: 1, mutations: 0, monsters: 0,
+      deaths: { hambre: 0, vejez: 0, depredador: 0, radiacion: 0, veneno: 0, canibalismo: 0, monstruo: 0 },
+    },
     over: null,                // null | 'plaga' | 'extincion'
     savedAt: Date.now(),
   };
@@ -448,10 +529,21 @@ function load() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw);
-    // Compatibilidad con partidas guardadas antes de añadir el veneno
-    s.baits = s.baits || [];
-    s.stats.deaths.veneno = s.stats.deaths.veneno || 0;
-    for (const c of s.cells) c.resist = c.resist || 0;
+    // Compatibilidad con partidas guardadas en versiones anteriores
+    const fresh = newState();
+    for (const k of ['baits', 'enclosures', 'lineages', 'events']) s[k] = s[k] || [];
+    s.nextEnc = s.nextEnc || 1;
+    s.stats = { ...fresh.stats, ...s.stats, deaths: { ...fresh.stats.deaths, ...s.stats.deaths } };
+    if (!s.lineages.length && s.cells.length) {
+      s.lineages.push({ id: 1, letter: 'A', color: LINEAGE_COLORS[0], glyph: LINEAGE_GLYPHS[0], founder: s.cells[0].id, born: 0, extinct: null });
+    }
+    for (const c of s.cells) {
+      c.resist = c.resist || 0;
+      c.traits = c.traits || [];
+      c.zone = c.zone || 0;
+      c.lineage = c.lineage || 1;
+    }
+    for (const o of [...s.predators, ...s.foods, ...s.baits]) o.zone = o.zone || 0;
     return s;
   } catch (e) { return null; }
 }
@@ -460,6 +552,8 @@ function load() {
 
 const stat = key => UPGRADES[key].value(state.levels[key]);
 const upgradeCost = key => UPGRADES[key].base + state.levels[key] * UPGRADES[key].step;
+const has = (c, trait) => c.traits.includes(trait);
+const isMonster = c => has(c, 'monstruo');
 
 function makeCell(sex, x, y, gen = 1) {
   return {
@@ -471,36 +565,72 @@ function makeCell(sex, x, y, gen = 1) {
     breeds: 0, cooldown: 0, oldFor: 0,
     sterile: false, gen,
     resist: rand(0, 0.3),      // resistencia al veneno (0..0.95), se hereda
+    traits: [],                // mutaciones
+    zone: 0,                   // 0 = agua libre; si no, id del recinto
+    lineage: 0, mom: null, dad: null,
   };
+}
+
+/* Abre un linaje nuevo para un fundador. */
+function newLineage(founder) {
+  const i = state.lineages.length;
+  let letter = '', n = i;
+  do { letter = String.fromCharCode(65 + n % 26) + letter; n = Math.floor(n / 26) - 1; } while (n >= 0);
+  const L = {
+    id: i + 1, letter, color: LINEAGE_COLORS[i % LINEAGE_COLORS.length],
+    glyph: LINEAGE_GLYPHS[i % LINEAGE_GLYPHS.length], founder: founder.id, born: state.clock, extinct: null,
+  };
+  state.lineages.push(L);
+  founder.lineage = L.id;
+  return L;
+}
+const lineageOf = c => state.lineages.find(l => l.id === c.lineage) || state.lineages[0];
+
+/* Sucesos destacados (los repetidos seguidos se agrupan: "×3"). */
+function logEvent(text, key = text) {
+  const last = state.events[0];
+  if (last && last.key === key && state.clock - last.t < 120) { last.n++; last.t = state.clock; return; }
+  state.events.unshift({ t: state.clock, text, key, n: 1 });
+  state.events.length = Math.min(state.events.length, MAX_EVENTS);
 }
 
 /* Etapa vital: cría → adulta → vieja */
 function stageOf(c) {
   if (c.eaten < ADULT_AT) return 'cría';
-  if (c.breeds >= MAX_BREEDS || c.age >= OLD_AGE) return 'vieja';
+  if (c.breeds >= MAX_BREEDS || c.age >= oldAge(c)) return 'vieja';
   return 'adulta';
 }
+const oldAge = c => OLD_AGE * (has(c, 'longeva') ? 1.5 : 1);
+const maxAge = c => MAX_AGE * (has(c, 'longeva') ? 1.5 : 1);
 
 function canBreed(c) {
   return stageOf(c) === 'adulta' && !c.sterile && c.cooldown <= 0 && c.energy >= MATE_ENERGY;
 }
 
+/* Tamaño según mutaciones */
+const sizeMult = c => isMonster(c) ? 1.8 : has(c, 'gigante') ? 1.35 : 1;
+
 /* Radio en pantalla: las crías crecen a medida que comen */
 function radiusOf(c) {
-  const R = stat('size');
+  const R = stat('size') * sizeMult(c);
   return c.eaten < ADULT_AT ? R * (0.5 + 0.5 * c.eaten / ADULT_AT) : R;
+}
+
+function cellSpeed(c) {
+  return stat('speed') * (has(c, 'veloz') ? 1.25 : 1) * (isMonster(c) ? 1.1 : 1) * (c.eaten < ADULT_AT ? 0.85 : 1);
 }
 
 /* Eficacia buscando comida (1 = célula base). Solo se usa en el avance rápido:
    importa cuando escasea la comida. */
 function huntSkill(c) {
-  return (stat('speed') / 110) * Math.sqrt(stat('vision') / 110) *
-         Math.pow(stat('size') / 12, 0.3) * (c.eaten < ADULT_AT ? 0.8 : 1);
+  return (cellSpeed(c) / 110) * Math.sqrt(stat('vision') / 110) *
+         Math.pow(stat('size') * sizeMult(c) / 12, 0.3) * (c.eaten < ADULT_AT ? 0.8 : 1);
 }
 
 /* Gasto de energía por minuto: más tamaño = más gasto; las crías gastan menos */
 function energyDecay(c) {
-  return ENERGY_DECAY * Math.sqrt(stat('size') / 12) * (c.eaten < ADULT_AT ? 0.6 : 1);
+  return ENERGY_DECAY * Math.sqrt(stat('size') / 12) * (c.eaten < ADULT_AT ? 0.6 : 1) *
+    (has(c, 'gigante') ? 1.3 : 1) * (has(c, 'veloz') ? 1.1 : 1) * (isMonster(c) ? 1.6 : 1);
 }
 
 /* Comer: recupera energía y, mientras es cría, crece y da ADN al jugador
@@ -524,43 +654,103 @@ function lifeStep(c, gm) {
   c.digest = Math.max(0, (c.digest || 0) - gm);
   if (c.breeds >= MAX_BREEDS) c.oldFor += gm;
   if (c.energy <= 0) return 'hambre';
-  if (c.age >= MAX_AGE || c.oldFor >= OLD_LIFE) return 'vejez';
+  if (c.age >= maxAge(c) || c.oldFor >= OLD_LIFE) return 'vejez';
   return null;
 }
 
-/* Apareamiento: la hembra tiene 1 o 2 crías. Devuelve las crías nuevas. */
+/* Herencia de mutaciones + posibilidad de una mutación nueva. */
+function inheritTraits(baby, mom, dad, live) {
+  const traits = new Set();
+  for (const p of [mom, dad]) for (const tr of p.traits) if (Math.random() < 0.5) traits.add(tr);
+  if (Math.random() < MUTATION_CHANCE) {
+    const options = RANDOM_TRAITS.filter(k => !traits.has(k));
+    // Albina y dorada son colores excluyentes
+    const tr = pick(options.filter(k => !(k === 'albina' && traits.has('dorada')) && !(k === 'dorada' && traits.has('albina'))));
+    if (tr) {
+      traits.add(tr);
+      state.stats.mutations++;
+      logEvent(`🧬 Mutación en el linaje ${lineageOf(mom).letter}: ${TRAITS[tr].icon} ${TRAITS[tr].name}`, 'mut-' + tr);
+      if (live) floater(baby.x, baby.y - 18, `🧬 ¡${TRAITS[tr].name}!`, '#faf089');
+    }
+  }
+  baby.traits = [...traits];
+  if (traits.has('monstruo')) state.stats.monsters++;
+}
+
+/* Apareamiento: la hembra tiene 1 o 2 crías (2 o 3 si es fértil). */
 function mate(female, male, live) {
   female.breeds++; male.breeds++;
   female.cooldown = male.cooldown = BREED_COOLDOWN;
   female.energy -= 20; male.energy -= 10;
   const gen = Math.max(female.gen, male.gen) + 1;
   state.stats.maxGen = Math.max(state.stats.maxGen, gen);
-  const n = Math.random() < 0.5 ? 1 : 2;
-  const babies = [];
+  const n = (Math.random() < 0.5 ? 1 : 2) + (has(female, 'fertil') ? 1 : 0);
   for (let i = 0; i < n; i++) {
-    const b = makeCell(null, clamp(female.x + rand(-20, 20), 10, W - 10), clamp(female.y + rand(-20, 20), 10, H - 10), gen);
+    const b = makeCell(null, female.x + rand(-20, 20), female.y + rand(-20, 20), gen);
     b.energy = 60;
-    // Herencia: media de los padres + una pequeña mutación al azar
+    b.zone = female.zone;
+    b.lineage = female.lineage;
+    b.mom = female.id; b.dad = male.id;
+    // Resistencia al veneno: media de los padres + una pequeña variación al azar
     b.resist = clamp((female.resist + male.resist) / 2 + rand(-0.08, 0.08), 0, 0.95);
-    babies.push(b);
+    inheritTraits(b, female, male, live);
+    confine(b, radiusOf(b));
+    state.cells.push(b);
   }
-  state.cells.push(...babies);
   state.stats.births += n;
   if (live) {
     burst(female.x, female.y, '#fbb6ce', 14);
-    floater(female.x, female.y - 16, n === 1 ? '¡Nace 1!' : '¡Nacen 2!', '#fbb6ce');
+    floater(female.x, female.y - 16, n === 1 ? '¡Nace 1!' : `¡Nacen ${n}!`, '#fbb6ce');
   }
-  return babies;
 }
 
 /* Elimina una célula registrando la causa. */
+const DEATH_COLORS = { radiacion: '#d6f35a', veneno: '#b794f4', canibalismo: '#fc8181', monstruo: '#9ae6b4' };
 function kill(c, cause, live) {
   const i = state.cells.indexOf(c);
   if (i < 0) return;
   state.cells.splice(i, 1);
+  c.dead = true;               // marca rápida para los bucles que aún la tengan en una lista
   state.stats.deaths[cause]++;
   if (state.selected === c.id) state.selected = null;
-  if (live) burst(c.x, c.y, cause === 'radiacion' ? '#d6f35a' : cause === 'veneno' ? '#b794f4' : '#a0aec0', 10);
+  if (live) burst(c.x, c.y, DEATH_COLORS[cause] || '#a0aec0', 10);
+  // ¿Era la última de su linaje?
+  if (!state.cells.some(o => o.lineage === c.lineage)) {
+    const L = lineageOf(c);
+    if (L && !L.extinct) { L.extinct = state.clock; logEvent(`🪦 Se extingue el linaje ${L.letter}`, 'ext-' + L.id); }
+  }
+}
+
+/* Un depredador alcanza a una presa. Devuelve true si el depredador muere. */
+function predatorStrike(p, prey, live) {
+  const T = PREDATORS[p.type];
+  if (isMonster(prey)) {
+    // El monstruo se come al depredador
+    prey.energy = Math.min(ENERGY_MAX, prey.energy + 40);
+    logEvent(`👹 Un monstruo del linaje ${lineageOf(prey).letter} devoró a un depredador`, 'monpred');
+    if (live) { burst(p.x, p.y, T.color, 18); floater(prey.x, prey.y - 20, `👹 ¡Se come a ${T.name.split(' ')[1]}!`, '#9ae6b4'); }
+    return true;
+  }
+  p.cooldown = T.digest; p.sinceMeal = 0;
+  if (has(prey, 'espinosa') && Math.random() < 0.5) {
+    p.cooldown = T.digest / 2;
+    if (live) floater(prey.x, prey.y - 14, '🌵 ¡Pincha!', '#c6f6d5');
+    return false;
+  }
+  kill(prey, 'depredador', live);
+  return false;
+}
+
+/* Un adulto hambriento devora una cría, o un monstruo a un congénere. */
+function devour(eater, victim, live) {
+  const mon = isMonster(eater);
+  kill(victim, mon ? 'monstruo' : 'canibalismo', live);
+  eater.energy = Math.min(ENERGY_MAX, eater.energy + (mon ? 50 : 40));
+  eater.digest = DIGEST;
+  const where = eater.zone ? `en el recinto ${encLabel(eater.zone)}` : 'en el agua libre';
+  if (mon) logEvent(`👹 Un monstruo devora a un congénere ${where}`, 'mon-' + eater.zone);
+  else logEvent(`🍖 Canibalismo ${where}: devoran crías por hambre`, 'can-' + eater.zone);
+  if (live) floater(eater.x, eater.y - 16, mon ? '👹 ñam' : '🍖 ¡Devora una cría!', '#fc8181');
 }
 
 /* Fin de partida: extinción o plaga (población descontrolada). */
@@ -571,9 +761,119 @@ function checkOver() {
   return !!state.over;
 }
 
-// ---------- 4. SIMULACIÓN EN DIRECTO ----------
+// ---------- 4. ZONAS Y RECINTOS ----------
 
-const input = { keys: new Set(), pointer: null, aiming: false };
+const encById = id => state.enclosures.find(e => e.id === id);
+/* Radio de cualquier cosa del estanque: célula, depredador, comida o cebo. */
+const bodyRadius = o => o.traits ? radiusOf(o) : o.type ? PREDATORS[o.type].size : 8;
+const encLabel = id => state.enclosures.findIndex(e => e.id === id) + 1;
+
+/* Zona del punto (x, y): id del recinto que lo contiene o 0. */
+function zoneAt(x, y) {
+  for (const e of state.enclosures) if (x > e.x && x < e.x + e.w && y > e.y && y < e.y + e.h) return e.id;
+  return 0;
+}
+
+/* Rectángulo interior utilizable de una zona. */
+function zoneRect(z) {
+  const e = encById(z);
+  return e ? { x: e.x + WALL, y: e.y + WALL, w: e.w - 2 * WALL, h: e.h - 2 * WALL } : { x: 0, y: 0, w: W, h: H };
+}
+
+/* Fracción del estanque que ocupa cada zona: la comida cae en proporción al área. */
+function zoneFractions() {
+  const total = W * H || 1, fr = { 0: 1 };
+  for (const e of state.enclosures) {
+    fr[e.id] = Math.max(0.001, (e.w - 2 * WALL) * (e.h - 2 * WALL) / total);
+    fr[0] -= e.w * e.h / total;
+  }
+  fr[0] = Math.max(0.05, fr[0]);
+  return fr;
+}
+
+/* Mantiene un cuerpo dentro de su zona: dentro de su recinto, o fuera de todos. */
+function confine(b, r) {
+  if (b.zone && !encById(b.zone)) b.zone = 0;
+  if (b.zone) {
+    const q = zoneRect(b.zone);
+    const nx = clamp(b.x, q.x + r, Math.max(q.x + r, q.x + q.w - r));
+    const ny = clamp(b.y, q.y + r, Math.max(q.y + r, q.y + q.h - r));
+    if (nx !== b.x && b.vx !== undefined) b.vx *= -0.3;
+    if (ny !== b.y && b.vy !== undefined) b.vy *= -0.3;
+    b.x = nx; b.y = ny;
+    return;
+  }
+  b.x = clamp(b.x, r, W - r); b.y = clamp(b.y, r, H - r);
+  for (const e of state.enclosures) {
+    const L = e.x - r, R = e.x + e.w + r, T = e.y - r, B = e.y + e.h + r;
+    if (b.x > L && b.x < R && b.y > T && b.y < B) {
+      // Empujar hacia fuera por el lado más cercano y rebotar
+      const m = Math.min(b.x - L, R - b.x, b.y - T, B - b.y);
+      const bounce = b.vx !== undefined;
+      if (m === b.x - L) { b.x = L; if (bounce) b.vx = -Math.abs(b.vx); }
+      else if (m === R - b.x) { b.x = R; if (bounce) b.vx = Math.abs(b.vx); }
+      else if (m === b.y - T) { b.y = T; if (bounce) b.vy = -Math.abs(b.vy); }
+      else { b.y = B; if (bounce) b.vy = Math.abs(b.vy); }
+    }
+  }
+}
+
+/* Punto al azar dentro de una zona (para recolocar tras un salto en el tiempo). */
+function randomPointIn(z, m = 15) {
+  if (z) {
+    const q = zoneRect(z);
+    return { x: rand(q.x + m, Math.max(q.x + m, q.x + q.w - m)), y: rand(q.y + m, Math.max(q.y + m, q.y + q.h - m)) };
+  }
+  let p;
+  for (let i = 0; i < 30; i++) {
+    p = { x: rand(m, W - m), y: rand(m, H - m), zone: 0 };
+    confine(p, m);
+    if (zoneAt(p.x, p.y) === 0) return p;
+  }
+  return p;
+}
+
+/* ¿Se puede levantar un recinto aquí? Devuelve el motivo si no. */
+function enclosureProblem(r) {
+  if (state.enclosures.length >= MAX_ENCLOSURES) return `Máximo ${MAX_ENCLOSURES} recintos`;
+  if (state.dna < BUILD_COST) return `Necesitas ${BUILD_COST} ADN`;
+  if (r.w < MIN_ENCLOSURE || r.h < MIN_ENCLOSURE) return 'Demasiado pequeño';
+  if (r.x < EDGE_GAP || r.y < EDGE_GAP || r.x + r.w > W - EDGE_GAP || r.y + r.h > H - EDGE_GAP) return 'Deja pasillo con el borde';
+  for (const e of state.enclosures) {
+    if (r.x < e.x + e.w + EDGE_GAP && r.x + r.w + EDGE_GAP > e.x && r.y < e.y + e.h + EDGE_GAP && r.y + r.h + EDGE_GAP > e.y) return 'Choca con otro recinto';
+  }
+  return null;
+}
+
+function buildEnclosure(r) {
+  forecastSoon();
+  if (enclosureProblem(r) || state.over) return false;
+  state.dna -= BUILD_COST;
+  const e = { id: state.nextEnc++, x: r.x, y: r.y, w: r.w, h: r.h };
+  state.enclosures.push(e);
+  // Quien quede dentro, queda encerrado
+  for (const o of [...state.cells, ...state.predators, ...state.foods, ...state.baits]) {
+    o.zone = zoneAt(o.x, o.y);
+    confine(o, bodyRadius(o));
+  }
+  const inside = state.cells.filter(c => c.zone === e.id).length;
+  logEvent(`🧱 Recinto ${encLabel(e.id)} levantado (${inside} ${inside === 1 ? 'célula' : 'células'} dentro)`, 'build-' + e.id);
+  updateUI();
+  return true;
+}
+
+function removeEnclosure(id) {
+  forecastSoon();
+  const n = encLabel(id);
+  for (const o of [...state.cells, ...state.predators, ...state.foods, ...state.baits]) if (o.zone === id) o.zone = 0;
+  state.enclosures = state.enclosures.filter(e => e.id !== id);
+  logEvent(`🧱 Recinto ${n} derribado`, 'rm-' + id);
+  updateUI();
+}
+
+// ---------- 5. SIMULACIÓN EN DIRECTO ----------
+
+const input = { keys: new Set(), pointer: null, tool: null, drag: null, carry: null, highlight: null };
 
 /* Dirección deseada de una célula (vector unitario + fuerza 0..1). */
 function cellDirection(c) {
@@ -589,33 +889,61 @@ function cellDirection(c) {
   }
 
   const V = stat('vision');
+  const toward = (o, d, s) => ({ x: (o.x - c.x) / (d || 1), y: (o.y - c.y) / (d || 1), s });
+  const mon = isMonster(c);
 
-  // b) Huir de depredadores que la consideran presa
-  for (const p of state.predators) {
-    const T = PREDATORS[p.type];
-    if (T.speed === 0 || p.cooldown > 0 || !T.prey(c)) continue;
-    const d = dist(c, p);
-    if (d < V * 0.6) return { x: (c.x - p.x) / d, y: (c.y - p.y) / d, s: 1 };
+  // b) Monstruo hambriento: caza a cualquier congénere de su zona
+  if (mon && c.energy < MONSTER_HUNGRY) {
+    let best = null, bd = V * 1.2;
+    for (const o of state.cells) if (o.zone === c.zone && !isMonster(o)) { const d = dist(c, o); if (d < bd) { bd = d; best = o; } }
+    if (best) return toward(best, bd, 1);
   }
 
-  // c) Buscar pareja si está lista
+  // c) Huir de depredadores y de monstruos hambrientos de su zona
+  if (!mon) {
+    for (const p of state.predators) {
+      const T = PREDATORS[p.type];
+      if (p.zone !== c.zone || T.speed === 0 || p.cooldown > 0 || !T.prey(c)) continue;
+      const d = dist(c, p);
+      if (d < V * 0.6) return { x: (c.x - p.x) / d, y: (c.y - p.y) / d, s: 1 };
+    }
+    for (const o of state.cells) {
+      if (o.zone !== c.zone || !isMonster(o) || o.energy >= MONSTER_HUNGRY) continue;
+      const d = dist(c, o);
+      if (d < V * 0.5 && d > 0) return { x: (c.x - o.x) / d, y: (c.y - o.y) / d, s: 1 };
+    }
+  }
+
+  // d) Buscar pareja si está lista
   if (canBreed(c)) {
     let best = null, bd = V;
     for (const o of state.cells) {
-      if (o.sex !== c.sex && canBreed(o)) { const d = dist(c, o); if (d < bd) { bd = d; best = o; } }
+      if (o.zone === c.zone && o.sex !== c.sex && canBreed(o)) { const d = dist(c, o); if (d < bd) { bd = d; best = o; } }
     }
-    if (best) return { x: (best.x - c.x) / bd, y: (best.y - c.y) / bd, s: 0.9 };
+    if (best) return toward(best, bd, 0.9);
   }
 
-  // d) Buscar la comida más cercana dentro de su visión (si no está digiriendo)
+  // e) Buscar la comida más cercana de su zona (los cebos envenenados parecen comida)
   let food = null, fd = V;
-  // (los cebos envenenados parecen comida: no los distinguen)
-  if (c.digest <= 0) for (const f of [...state.foods, ...state.baits]) { const d = dist(c, f); if (d < fd) { fd = d; food = f; } }
-  if (food) return { x: (food.x - c.x) / (fd || 1), y: (food.y - c.y) / (fd || 1), s: 0.85 };
+  if (c.digest <= 0) {
+    for (const f of state.foods) if (f.zone === c.zone) { const d = dist(c, f); if (d < fd) { fd = d; food = f; } }
+    for (const f of state.baits) if (f.zone === c.zone) { const d = dist(c, f); if (d < fd) { fd = d; food = f; } }
+  }
+  if (food) return toward(food, fd, 0.85);
 
-  // e) Explorar: rumbo que cambia poco a poco y gira hacia el centro en los bordes
+  // f) Sin comida a la vista y con hambre: los adultos van a por las crías
+  if (!mon && stageOf(c) !== 'cría' && c.energy < HUNGRY) {
+    let best = null, bd = V;
+    for (const o of state.cells) if (o.zone === c.zone && stageOf(o) === 'cría' && !isMonster(o)) { const d = dist(c, o); if (d < bd) { bd = d; best = o; } }
+    if (best) return toward(best, bd, 1);
+  }
+
+  // g) Explorar: rumbo que cambia poco a poco y gira hacia el centro en los bordes de su zona
+  const q = zoneRect(c.zone);
   c.wander += rand(-0.15, 0.15);
-  if (c.x < 50 || c.x > W - 50 || c.y < 50 || c.y > H - 50) c.wander = Math.atan2(H / 2 - c.y, W / 2 - c.x);
+  if (c.x < q.x + 40 || c.x > q.x + q.w - 40 || c.y < q.y + 40 || c.y > q.y + q.h - 40) {
+    c.wander = Math.atan2(q.y + q.h / 2 - c.y, q.x + q.w / 2 - c.x) + rand(-0.5, 0.5);
+  }
   return { x: Math.cos(c.wander), y: Math.sin(c.wander), s: 0.55 };
 }
 
@@ -624,8 +952,9 @@ function moveBody(b, dir, maxSpeed, dt, r) {
   const k = Math.min(1, dt * 6);
   b.vx += (dir.x * maxSpeed * dir.s - b.vx) * k;
   b.vy += (dir.y * maxSpeed * dir.s - b.vy) * k;
-  b.x = clamp(b.x + b.vx * dt, r, W - r);
-  b.y = clamp(b.y + b.vy * dt, r, H - r);
+  b.x += b.vx * dt;
+  b.y += b.vy * dt;
+  confine(b, r);
   if (Math.hypot(b.vx, b.vy) > 5) {
     let diff = Math.atan2(b.vy, b.vx) - b.angle;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
@@ -633,19 +962,24 @@ function moveBody(b, dir, maxSpeed, dt, r) {
   }
 }
 
-function spawnFood() {
-  state.foods.push({
-    x: rand(15, W - 15), y: rand(15, H - 15), r: rand(4, 6),
+function spawnFood(zone) {
+  const p = zone === undefined ? { x: rand(15, W - 15), y: rand(15, H - 15) } : randomPointIn(zone, 10);
+  const f = {
+    x: p.x, y: p.y, r: rand(4, 6), zone: zone ?? zoneAt(p.x, p.y),
     seed: rand(0, 6.28), vx: rand(-8, 8), vy: rand(-8, 8), born: state.clock,
-  });
+  };
+  confine(f, 8);
+  state.foods.push(f);
 }
+
+const isCarried = o => input.carry && input.carry.obj === o;
 
 /* Un paso de simulación en directo. dt en segundos reales. */
 function liveStep(dt) {
   const gm = dt * MIN_PER_SEC;
   state.clock += gm;
 
-  // Comida nueva
+  // Comida nueva: cae al azar por todo el estanque (cada recinto recibe según su área)
   state.foodAcc += FOOD_RATE * gm;
   while (state.foodAcc >= 1) {
     state.foodAcc -= 1;
@@ -654,21 +988,22 @@ function liveStep(dt) {
   if (state.phase === 1) {
     for (const f of state.foods) {
       f.x += f.vx * dt; f.y += f.vy * dt;
-      if (f.x < 10 || f.x > W - 10) f.vx *= -1;
-      if (f.y < 10 || f.y > H - 10) f.vy *= -1;
+      const q = zoneRect(f.zone);
+      if (f.x < q.x + 10 || f.x > q.x + q.w - 10) f.vx *= -1;
+      if (f.y < q.y + 10 || f.y > q.y + q.h - 10) f.vy *= -1;
+      confine(f, 8);
     }
   }
 
   // Células: moverse, comer, vivir
-  const speed = stat('speed');
   for (const c of [...state.cells]) {
     const r = radiusOf(c);
-    moveBody(c, cellDirection(c), speed * (c.eaten < ADULT_AT ? 0.85 : 1), dt, r);
+    if (!isCarried(c)) moveBody(c, cellDirection(c), cellSpeed(c), dt, r);
     for (let i = state.foods.length - 1; i >= 0 && c.digest <= 0; i--) {
       const f = state.foods[i];
-      if (Math.abs(f.x - c.x) < r + f.r && dist(c, f) < r + f.r) {
+      if (f.zone === c.zone && Math.abs(f.x - c.x) < r + f.r && dist(c, f) < r + f.r) {
         state.foods.splice(i, 1);
-        if (c.eaten < ADULT_AT) floater(f.x, f.y - 8, '+1 ADN', '#81e6d9');
+        if (c.eaten < ADULT_AT && (c.id === state.selected || state.cells.length < 12)) floater(f.x, f.y - 8, '+1 ADN', '#81e6d9');
         feed(c, 1);
       }
     }
@@ -681,15 +1016,26 @@ function liveStep(dt) {
   for (const c of [...state.cells]) {
     if (c.digest > 0) continue;
     const r = radiusOf(c);
-    const i = state.baits.findIndex(b => Math.hypot(b.x - c.x, b.y - c.y) < r + 4);
+    const i = state.baits.findIndex(b => b.zone === c.zone && Math.hypot(b.x - c.x, b.y - c.y) < r + 4);
     if (i >= 0) { state.baits.splice(i, 1); c.digest = DIGEST; poison(c, true); }
   }
 
-  // Apareamiento por contacto
+  // Canibalismo y monstruos: devorar al tocar
+  for (const a of [...state.cells]) {
+    if (a.dead) continue;
+    const mon = isMonster(a);
+    if (mon ? a.energy >= MONSTER_HUNGRY : (stageOf(a) === 'cría' || a.energy >= HUNGRY)) continue;
+    const ra = radiusOf(a);
+    const victim = state.cells.find(v => v !== a && v.zone === a.zone && !isMonster(v) &&
+      (mon || stageOf(v) === 'cría') && dist(a, v) < ra + radiusOf(v));
+    if (victim) devour(a, victim, true);
+  }
+
+  // Apareamiento por contacto (solo dentro de la misma zona)
   for (const f of state.cells) {
     if (f.sex !== 'F' || !canBreed(f)) continue;
     for (const m of state.cells) {
-      if (m.sex === 'M' && canBreed(m) && dist(f, m) < radiusOf(f) + radiusOf(m)) { mate(f, m, true); break; }
+      if (m.sex === 'M' && m.zone === f.zone && canBreed(m) && dist(f, m) < radiusOf(f) + radiusOf(m)) { mate(f, m, true); break; }
     }
   }
 
@@ -702,44 +1048,60 @@ function liveStep(dt) {
       burst(p.x, p.y, T.color, 12);
       continue;
     }
-    // Buscar presa válida dentro de su radio de detección (con pocas células cuesta encontrarlas)
+    // Buscar presa válida de su zona dentro de su radio de detección
     let prey = null, pd = T.sense;
     if (p.cooldown <= 0) {
-      for (const c of state.cells) { if (T.prey(c)) { const d = dist(p, c); if (d < pd) { pd = d; prey = c; } } }
+      for (const c of state.cells) { if (c.zone === p.zone && T.prey(c)) { const d = dist(p, c); if (d < pd) { pd = d; prey = c; } } }
     }
-    if (T.speed > 0) {
+    if (T.speed > 0 && !isCarried(p)) {
       let dir;
       if (prey) dir = { x: (prey.x - p.x) / pd, y: (prey.y - p.y) / pd, s: 1 };
       else {  // digiriendo o sin presas: deambula despacio
+        const q = zoneRect(p.zone);
         p.wander += rand(-0.1, 0.1);
-        if (p.x < 50 || p.x > W - 50 || p.y < 50 || p.y > H - 50) p.wander = Math.atan2(H / 2 - p.y, W / 2 - p.x);
+        if (p.x < q.x + 50 || p.x > q.x + q.w - 50 || p.y < q.y + 50 || p.y > q.y + q.h - 50) p.wander = Math.atan2(q.y + q.h / 2 - p.y, q.x + q.w / 2 - p.x);
         dir = { x: Math.cos(p.wander), y: Math.sin(p.wander), s: 0.3 };
       }
       moveBody(p, dir, T.speed, dt, T.size);
     }
     const reach = T.reach || T.size + 2;
     if (prey && pd < reach + radiusOf(prey)) {
-      kill(prey, 'depredador', true);
-      p.cooldown = T.digest; p.sinceMeal = 0;
+      if (predatorStrike(p, prey, true)) state.predators.splice(state.predators.indexOf(p), 1);
     }
   }
 
   checkOver();
 }
 
-/* Radiación: mitad de la zona muere, el resto queda estéril. */
+/* Radiación: la mitad de la zona muere. De las supervivientes, la mayoría
+   queda estéril, pero un 25% muta en gigante y un 15% en monstruo. */
 function irradiate(x, y) {
   forecastSoon();
   if (state.dna < RAD_COST || state.over) return;
   state.dna -= RAD_COST;
   for (const c of [...state.cells]) {
     if (Math.hypot(c.x - x, c.y - y) > RAD_RADIUS) continue;
-    if (Math.random() < 0.5) kill(c, 'radiacion', true);
-    else c.sterile = true;
+    if (Math.random() < 0.5) { kill(c, 'radiacion', true); continue; }
+    const u = Math.random();
+    if (u < 0.15 && !isMonster(c)) {
+      c.traits.push('monstruo');
+      c.sterile = false;
+      c.energy = 100;
+      state.stats.monsters++;
+      logEvent(`☢️👹 ¡Nace un MONSTRUO en el linaje ${lineageOf(c).letter}!`, 'newmon-' + c.id);
+      floater(c.x, c.y - 24, '👹 ¡MUTANTE!', '#9ae6b4');
+    } else if (u < 0.40 && !has(c, 'gigante') && !isMonster(c)) {
+      c.traits.push('gigante');
+      state.stats.mutations++;
+      logEvent(`☢️ La radiación vuelve gigante a una célula del linaje ${lineageOf(c).letter}`, 'radgig');
+      floater(c.x, c.y - 20, '⬆️ ¡Gigante!', '#faf089');
+    } else {
+      c.sterile = true;
+    }
   }
   fx.flash = { x, y, t: 1 };
   checkOver();
-  setAiming(false);
+  setTool(null);
   updateUI();
 }
 
@@ -749,7 +1111,10 @@ function spreadPoison() {
   if (state.dna < POISON_COST || state.over) return;
   state.dna -= POISON_COST;
   for (let i = 0; i < POISON_BAITS; i++) {
-    state.baits.push({ x: rand(20, W - 20), y: rand(20, H - 20), expires: state.clock + POISON_LIFE, seed: rand(0, 6.28) });
+    const b = { x: rand(20, W - 20), y: rand(20, H - 20), expires: state.clock + POISON_LIFE, seed: rand(0, 6.28) };
+    b.zone = zoneAt(b.x, b.y);
+    confine(b, 8);
+    state.baits.push(b);
   }
   updateUI();
 }
@@ -758,60 +1123,83 @@ function spreadPoison() {
    pero se vuelve más tolerante y lo transmite a sus crías (licencia del juego:
    en la realidad solo actuaría la selección natural, que es más lenta). */
 function poison(c, live) {
-  if (Math.random() < POISON_LETHAL * (1 - c.resist)) kill(c, 'veneno', live);
+  if (!has(c, 'inmune') && Math.random() < POISON_LETHAL * (1 - c.resist)) kill(c, 'veneno', live);
   else {
-    c.energy -= 35;
+    c.energy -= has(c, 'inmune') ? 0 : 35;
     c.resist = Math.min(0.95, c.resist + 0.15);
-    if (live) floater(c.x, c.y - 14, '🛡️ resiste', '#b794f4');
+    if (live) floater(c.x, c.y - 14, has(c, 'inmune') ? '🛡️ inmune' : '🛡️ resiste', '#b794f4');
   }
 }
 
-// ---------- 5. AVANCE RÁPIDO ----------
+// ---------- 6. AVANCE RÁPIDO ----------
 
 /* Simula 'minutes' minutos de juego de golpe, con pasos de 1 minuto.
-   Modelo estadístico: cada célula captura comida según sus mejoras y lo
-   que haya en el estanque (con competencia), las parejas se encuentran
-   con cierta probabilidad y los depredadores cazan según la densidad de
-   presas. Devuelve un informe con lo que ha pasado. */
+   Modelo estadístico por zonas: en cada zona la comida cae según su área y
+   se reparte con competencia, las parejas se encuentran con cierta
+   probabilidad, los hambrientos devoran crías cuando falta comida y los
+   depredadores cazan según la densidad de presas. Devuelve un informe. */
 function fastForward(minutes) {
   const before = {
     pop: state.cells.length, dna: state.dna, births: state.stats.births,
-    deaths: { ...state.stats.deaths }, clock: state.clock,
+    deaths: { ...state.stats.deaths }, mutations: state.stats.mutations, monsters: state.stats.monsters,
   };
   const samples = [{ t: 0, n: state.cells.length }];
   const every = Math.max(1, Math.round(minutes / 200)); // ~200 puntos para la gráfica
   let peak = state.cells.length;
-  let food = state.foods.length + state.foodAcc;
+  const zones = [0, ...state.enclosures.map(e => e.id)];
+  const frac = zoneFractions();
+  const food = Object.fromEntries(zones.map(z => [z, 0]));
+  for (const f of state.foods) food[f.zone] = (food[f.zone] || 0) + 1;
+  food[0] += state.foodAcc;
+  const typeIII = (n, ref) => n * n / (n * n + ref * ref);
   const STEP = 1;
-  let t = 0;
+  let elapsed = 0;
 
-  while (t < minutes && !state.over) {
-    t += STEP;
+  while (elapsed < minutes && !state.over) {
+    elapsed += STEP;
     state.clock += STEP;
+    state.baits = state.baits.filter(b => b.expires > state.clock);
 
-    // 1) Comida: aparece y se reparte. Cada célula come como mucho 1 cada DIGEST
-    //    minutos; si escasea, las más hábiles (mejoras) encuentran más.
-    food = Math.min(FOOD_CAP, food + FOOD_RATE * STEP);
-    const want = state.cells.map(c => {
-      const x = food * huntSkill(c);
-      return STEP / DIGEST * x / (x + 8);
-    });
-    const demand = want.reduce((a, b) => a + b, 0);
-    const scale = demand > food ? food / demand : 1;
-    state.cells.forEach((c, i) => {
-      const a = want[i] * scale;
-      if (a > 0) { feed(c, a); c.digest = 0; } // en este modelo la digestión ya va en 'want'
-    });
-    food -= demand * scale;
+    // Agrupar células por zona
+    const groups = Object.fromEntries(zones.map(z => [z, []]));
+    for (const c of state.cells) (groups[c.zone] || groups[0]).push(c);
 
-    // 1b) Veneno: la probabilidad de topar con un cebo depende de cuántos hay
-    if (state.baits.length) {
-      state.baits = state.baits.filter(b => b.expires > state.clock);
-      for (const c of [...state.cells]) {
-        const nb = state.baits.length;
-        if (!nb) break;
-        const pBait = STEP / DIGEST * nb / (nb + food + 4);
-        if (Math.random() < pBait) { state.baits.splice(Math.floor(Math.random() * nb), 1); poison(c, false); }
+    for (const z of zones) {
+      const fr = frac[z], cells = groups[z];
+      // 1) Comida: cae según el área; cada célula come como mucho 1 cada DIGEST minutos
+      food[z] = Math.min(FOOD_CAP * fr, food[z] + FOOD_RATE * fr * STEP);
+      if (!cells.length) continue;
+      const density = food[z] / fr; // comida "por estanque completo"
+      const want = cells.map(c => { const x = density * huntSkill(c); return STEP / DIGEST * x / (x + 8); });
+      const demand = want.reduce((a, b) => a + b, 0);
+      const scale = demand > food[z] ? food[z] / demand : 1;
+      cells.forEach((c, i) => { const a = want[i] * scale; if (a > 0) { feed(c, a); c.digest = 0; } });
+      food[z] -= demand * scale;
+
+      // 1b) Veneno: la probabilidad de topar con un cebo depende de cuántos hay en la zona
+      let zb = state.baits.filter(b => b.zone === z);
+      for (const c of cells) {
+        if (!zb.length) break;
+        if (Math.random() < STEP / DIGEST * zb.length / (zb.length + food[z] + 4 * fr)) {
+          const b = zb.pop();
+          state.baits.splice(state.baits.indexOf(b), 1);
+          poison(c, false);
+        }
+      }
+
+      // 1c) Canibalismo: adultos hambrientos devoran crías si escasea la comida
+      const scarcity = 1 - density / (density + 3);
+      for (const a of cells) {
+        if (a.dead || isMonster(a) || stageOf(a) === 'cría' || a.energy >= HUNGRY) continue;
+        const crias = cells.filter(v => !v.dead && stageOf(v) === 'cría' && !isMonster(v));
+        if (crias.length && Math.random() < CANNIBAL_RATE * scarcity * STEP) devour(a, pick(crias), false);
+      }
+
+      // 1d) Monstruos hambrientos: cazan congéneres (más fácil cuanto más apretados)
+      for (const m of cells) {
+        if (!isMonster(m) || m.dead || m.energy >= MONSTER_HUNGRY) continue;
+        const preys = cells.filter(v => !v.dead && !isMonster(v));
+        if (preys.length && Math.random() < STEP / 12 * typeIII(preys.length / fr, 20)) devour(m, pick(preys), false);
       }
     }
 
@@ -821,17 +1209,18 @@ function fastForward(minutes) {
       if (cause) kill(c, cause, false);
     }
 
-    // 3) Apareamiento: cada hembra lista encuentra macho con cierta probabilidad
-    const males = state.cells.filter(c => c.sex === 'M' && canBreed(c));
-    if (males.length) {
-      for (const f of state.cells.filter(c => c.sex === 'F' && canBreed(c))) {
+    // 3) Apareamiento por zonas: cada hembra lista encuentra macho con cierta probabilidad
+    for (const z of zones) {
+      const males = state.cells.filter(c => c.zone === z && c.sex === 'M' && canBreed(c));
+      if (!males.length) continue;
+      for (const f of state.cells.filter(c => c.zone === z && c.sex === 'F' && canBreed(c))) {
         const ready = males.filter(canBreed);
         if (!ready.length) break;
         if (Math.random() < 1 - Math.exp(-STEP / 25)) mate(f, pick(ready), false);
       }
     }
 
-    // 4) Depredadores
+    // 4) Depredadores: cazan en su zona (respuesta tipo III según densidad)
     for (const p of [...state.predators]) {
       const T = PREDATORS[p.type];
       p.age += STEP; p.cooldown -= STEP; p.sinceMeal += STEP;
@@ -840,36 +1229,36 @@ function fastForward(minutes) {
         continue;
       }
       if (p.cooldown > 0) continue;
-      const preys = state.cells.filter(T.prey);
+      const preys = state.cells.filter(c => c.zone === p.zone && T.prey(c));
       if (!preys.length) continue;
-      // Respuesta tipo III: con pocas presas casi no las encuentra; con muchas, caza a tope
-      const density = preys.length ** 2 / (preys.length ** 2 + T.densRef ** 2);
-      if (Math.random() < 1 - Math.exp(-T.huntRate * density * STEP)) {
-        kill(pick(preys), 'depredador', false);
-        p.cooldown = T.digest; p.sinceMeal = 0;
+      const dens = preys.length / Math.max(frac[p.zone] || 1, 0.05);
+      if (Math.random() < 1 - Math.exp(-T.huntRate * typeIII(dens, T.densRef) * STEP)) {
+        if (predatorStrike(p, pick(preys), false)) state.predators.splice(state.predators.indexOf(p), 1);
       }
     }
 
     peak = Math.max(peak, state.cells.length);
     checkOver();
-    if (t % every === 0) samples.push({ t, n: state.cells.length });
+    if (elapsed % every === 0) samples.push({ t: elapsed, n: state.cells.length });
   }
-  if (samples[samples.length - 1].t !== t) samples.push({ t, n: state.cells.length });
+  if (samples[samples.length - 1].t !== elapsed) samples.push({ t: elapsed, n: state.cells.length });
 
-  // Volver a poner la comida y las células en el estanque
-  state.foodAcc = food % 1;
+  // Volver a poner la comida y los seres en su zona del estanque
+  state.foodAcc = food[0] % 1;
   state.foods = [];
-  for (let i = 0; i < Math.floor(food); i++) spawnFood();
-  for (const c of state.cells) { c.x = rand(30, W - 30); c.y = rand(30, H - 30); c.vx = c.vy = 0; }
-  for (const b of state.baits) { b.x = rand(20, W - 20); b.y = rand(20, H - 20); }
-  for (const p of state.predators) { if (PREDATORS[p.type].speed > 0) { p.x = rand(30, W - 30); p.y = rand(30, H - 30); } }
+  for (const z of zones) for (let i = 0; i < Math.floor(food[z]); i++) spawnFood(z);
+  for (const c of state.cells) { Object.assign(c, randomPointIn(c.zone, radiusOf(c) + 4)); c.zone = c.zone || 0; c.vx = c.vy = 0; }
+  for (const b of state.baits) Object.assign(b, randomPointIn(b.zone, 10), { zone: b.zone });
+  for (const p of state.predators) if (PREDATORS[p.type].speed > 0) Object.assign(p, randomPointIn(p.zone, 20), { zone: p.zone });
 
   const d = state.stats.deaths;
   return {
-    minutes: t, samples, peak,
+    minutes: elapsed, samples, peak,
     popBefore: before.pop, popAfter: state.cells.length,
     births: state.stats.births - before.births,
     deaths: Object.fromEntries(Object.keys(d).map(k => [k, d[k] - (before.deaths[k] || 0)])),
+    mutations: state.stats.mutations - before.mutations,
+    monsters: state.stats.monsters - before.monsters,
     dna: Math.floor(state.dna) - Math.floor(before.dna),
     maxGen: state.stats.maxGen,
   };
@@ -877,19 +1266,25 @@ function fastForward(minutes) {
 
 /* Pronóstico: simula en secreto los próximos días sobre COPIAS del estado
    (varias veces, porque hay azar) y resume qué pasaría si no haces nada. */
-function forecast() {
-  if (state.over) return null;
+function forecastRun() {
   const real = state;
-  const results = [];
   try {
-    for (let i = 0; i < FORECAST_RUNS; i++) {
-      state = JSON.parse(JSON.stringify(real));
-      const rep = fastForward(FORECAST_SPAN);
-      results.push({ over: state.over, at: rep.minutes, pop: state.cells.length });
-    }
+    state = JSON.parse(JSON.stringify(real));
+    const rep = fastForward(FORECAST_SPAN);
+    return { over: state.over, at: rep.minutes, pop: state.cells.length };
   } finally {
     state = real; // pase lo que pase, recuperar el estado real
   }
+}
+
+function forecast() {
+  if (state.over) return null;
+  const results = [];
+  for (let i = 0; i < FORECAST_RUNS; i++) results.push(forecastRun());
+  return summarizeForecast(results);
+}
+
+function summarizeForecast(results) {
   const count = k => results.filter(r => r.over === k).length;
   const kind = count('plaga') >= count('extincion') ? 'plaga' : 'extincion';
   const hits = results.filter(r => r.over === kind).sort((a, b) => a.at - b.at);
@@ -900,11 +1295,22 @@ function forecast() {
   return { kind: 'estable', pop: pops[Math.floor(pops.length / 2)], risk: count('plaga') + count('extincion') };
 }
 
-/* Pide recalcular el pronóstico en el siguiente medio segundo (tras una acción). */
-function forecastSoon() { forecastTimer = Math.max(forecastTimer, 5.5); }
+/* Pide recalcular el pronóstico en cuanto se pueda (tras una acción). */
+function forecastSoon() { forecastTimer = Math.max(forecastTimer, 5.5); forecastPending = []; }
 
-function updateForecast() {
-  const f = forecast();
+/* Una simulación por llamada (para no congelar la pantalla); al completar
+   FORECAST_RUNS se actualiza el texto. Devuelve true al terminar una tanda. */
+let forecastPending = [];
+function forecastStep() {
+  if (state.over) { $('forecast').textContent = ''; forecastPending = []; return true; }
+  forecastPending.push(forecastRun());
+  if (forecastPending.length < FORECAST_RUNS) return false;
+  showForecast(summarizeForecast(forecastPending));
+  forecastPending = [];
+  return true;
+}
+
+function showForecast(f) {
   const el = $('forecast');
   if (!f) { el.textContent = ''; return; }
   const runs = `${f.n}/${FORECAST_RUNS} simulaciones`;
@@ -924,7 +1330,7 @@ function updateForecast() {
 function timeJump(minutes) {
   forecastSoon();
   if (state.over) return;
-  setAiming(false);
+  setTool(null);
   const rep = fastForward(minutes);
   showReport(`⏩ Salto de +${fmtDur(minutes)}`, `Ahora es ${fmtClock(state.clock)}`, rep);
   updateUI(); save();
@@ -945,7 +1351,7 @@ function catchUp(realMs, title) {
   updateUI(); save();
 }
 
-// ---------- 6. DIBUJO ----------
+// ---------- 7. DIBUJO ----------
 
 function burst(x, y, color, n) {
   for (let i = 0; i < n; i++) {
@@ -953,7 +1359,7 @@ function burst(x, y, color, n) {
     fx.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rand(.3, .7), color });
   }
 }
-function floater(x, y, text, color) { fx.floaters.push({ x, y, text, color, life: 1 }); }
+function floater(x, y, text, color) { fx.floaters.push({ x, y, text, color, life: 1.2 }); }
 
 function buildDecor() {
   fx.decor = [];
@@ -988,6 +1394,50 @@ function drawBackground(dt) {
   }
 }
 
+/* Recintos: muro grueso con sillares, etiqueta y recuento. */
+function drawEnclosures() {
+  const ph = PHASES[state.phase];
+  for (const e of state.enclosures) {
+    const inside = state.cells.filter(c => c.zone === e.id);
+    ctx.fillStyle = 'rgba(255,255,255,.035)';
+    ctx.fillRect(e.x, e.y, e.w, e.h);
+    ctx.strokeStyle = ph.wallDark; ctx.lineWidth = WALL + 2;
+    ctx.strokeRect(e.x + WALL / 2, e.y + WALL / 2, e.w - WALL, e.h - WALL);
+    ctx.save();
+    ctx.setLineDash([14, 3]);
+    ctx.strokeStyle = ph.wall; ctx.lineWidth = WALL - 1;
+    ctx.strokeRect(e.x + WALL / 2, e.y + WALL / 2, e.w - WALL, e.h - WALL);
+    ctx.restore();
+    // Etiqueta
+    const hungry = inside.some(c => c.energy < HUNGRY && stageOf(c) !== 'cría');
+    const label = `Recinto ${encLabel(e.id)} · ${inside.length}${hungry ? ' · 🍖 hambre' : ''}`;
+    ctx.font = 'bold 11px system-ui'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    const lw = ctx.measureText(label).width + 10;
+    ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(e.x, e.y - 17, lw, 16);
+    ctx.fillStyle = hungry ? '#fc8181' : '#e6eef6';
+    ctx.fillText(label, e.x + 5, e.y - 3);
+    ctx.textBaseline = 'alphabetic';
+  }
+}
+
+/* Vista previa al construir un recinto: verde si es válido, rojo si no. */
+function drawBuildPreview() {
+  const d = input.drag;
+  if (!d) return;
+  const r = dragRect(d);
+  const problem = enclosureProblem(r);
+  ctx.save();
+  ctx.setLineDash([8, 6]);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = problem ? '#fc8181' : '#9ae6b4';
+  ctx.fillStyle = problem ? 'rgba(252,129,129,.1)' : 'rgba(154,230,180,.1)';
+  ctx.fillRect(r.x, r.y, r.w, r.h); ctx.strokeRect(r.x, r.y, r.w, r.h);
+  ctx.restore();
+  ctx.font = 'bold 12px system-ui'; ctx.textAlign = 'center';
+  ctx.fillStyle = problem ? '#fc8181' : '#9ae6b4';
+  ctx.fillText(problem || `Suelta para construir (🧬${BUILD_COST})`, r.x + r.w / 2, r.y + r.h / 2);
+}
+
 function drawFood(f) {
   const r = f.r * (1 + Math.sin(t * 4 + f.seed) * 0.12);
   if (state.phase === 1) {
@@ -1020,33 +1470,78 @@ function drawBait(b) {
   ctx.beginPath(); ctx.arc(b.x, b.y, r * .55, 0, 6.28); ctx.fill();
 }
 
-/* Colores según sexo; las viejas se ven apagadas. */
+/* Colores según sexo y mutaciones; las viejas se ven apagadas.
+   Devuelve [claro, oscuro, borde]. El borde indica el sexo en las de color mutado. */
 function cellColors(c) {
   const old = stageOf(c) === 'vieja';
-  if (c.sex === 'M') return old ? ['#a3b8c8', '#5a6d7c'] : ['#bee3f8', '#3182ce'];
-  return old ? ['#d3b8c4', '#7c5a68'] : ['#fed7e2', '#d53f8c'];
+  const sexEdge = c.sex === 'M' ? '#63b3ed' : '#f687b3';
+  if (isMonster(c)) return ['#c6f6d5', '#1c4532', sexEdge];
+  if (has(c, 'albina')) return old ? ['#e2e8f0', '#a0aec0', sexEdge] : ['#ffffff', '#cbd5e0', sexEdge];
+  if (has(c, 'dorada')) return old ? ['#ecd9a0', '#9c7a2f', sexEdge] : ['#fefcbf', '#d69e2e', sexEdge];
+  if (c.sex === 'M') return old ? ['#a3b8c8', '#5a6d7c', 'rgba(255,255,255,.7)'] : ['#bee3f8', '#3182ce', 'rgba(255,255,255,.7)'];
+  return old ? ['#d3b8c4', '#7c5a68', 'rgba(255,255,255,.7)'] : ['#fed7e2', '#d53f8c', 'rgba(255,255,255,.7)'];
+}
+
+/* Símbolo del linaje (se dibuja en la espalda). */
+function glyphPath(g, x, y, s) {
+  ctx.beginPath();
+  if (g === 'circle') ctx.arc(x, y, s, 0, 6.28);
+  else if (g === 'square') ctx.rect(x - s * .85, y - s * .85, s * 1.7, s * 1.7);
+  else if (g === 'triangle') { ctx.moveTo(x + s, y); ctx.lineTo(x - s * .7, y - s); ctx.lineTo(x - s * .7, y + s); ctx.closePath(); }
+  else if (g === 'diamond') { ctx.moveTo(x, y - s * 1.1); ctx.lineTo(x + s * 1.1, y); ctx.lineTo(x, y + s * 1.1); ctx.lineTo(x - s * 1.1, y); ctx.closePath(); }
+  else if (g === 'star') {
+    for (let i = 0; i < 10; i++) {
+      const a = i / 10 * 6.28 - Math.PI / 2, rr = i % 2 ? s * .5 : s * 1.2;
+      i ? ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr) : ctx.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+    }
+    ctx.closePath();
+  } else { // cruz
+    const w = s * .4;
+    ctx.rect(x - s, y - w, s * 2, w * 2); ctx.rect(x - w, y - s, w * 2, s * 2);
+  }
+}
+
+function drawLineageMark(c, x, y, R) {
+  const L = lineageOf(c);
+  if (!L) return;
+  const s = Math.max(2.2, R * 0.26);
+  glyphPath(L.glyph, x, y, s);
+  ctx.fillStyle = L.color; ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = 1; ctx.stroke();
 }
 
 function drawCell(c) {
   const R = radiusOf(c);
-  const [light, dark] = cellColors(c);
-  const sp = Math.min(1, Math.hypot(c.vx, c.vy) / stat('speed'));
+  const [light, dark, edge] = cellColors(c);
+  const sp = Math.min(1, Math.hypot(c.vx, c.vy) / cellSpeed(c));
+  const mon = isMonster(c);
+  const dimmed = input.highlight && c.lineage !== input.highlight;
   ctx.save();
+  if (dimmed) ctx.globalAlpha = 0.18;
   ctx.translate(c.x, c.y);
   ctx.rotate(c.angle);
 
+  if (mon) { ctx.shadowColor = '#68d391'; ctx.shadowBlur = 18 + Math.sin(t * 4) * 6; }
+
   if (state.phase === 1) {
-    // Flagelo
-    ctx.strokeStyle = light; ctx.globalAlpha = 0.7;
+    // Flagelo (dos si es veloz)
+    ctx.strokeStyle = light; ctx.globalAlpha *= 0.7;
     ctx.lineWidth = Math.max(1.2, R * 0.12); ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(-R * 0.9, 0);
-    for (let i = 1; i <= 10; i++) ctx.lineTo(-R * 0.9 - i * R * 0.15, Math.sin(t * (8 + sp * 10) - i * 0.7 + c.id) * R * 0.06 * i);
-    ctx.stroke(); ctx.globalAlpha = 1;
-    // Membrana ondulante
+    const tails = has(c, 'veloz') ? [-0.35, 0.35] : [0];
+    for (const off of tails) {
+      ctx.beginPath(); ctx.moveTo(-R * 0.9, off * R);
+      for (let i = 1; i <= 10; i++) ctx.lineTo(-R * 0.9 - i * R * 0.15, off * R + Math.sin(t * (8 + sp * 10) - i * 0.7 + c.id + off * 3) * R * 0.06 * i);
+      ctx.stroke();
+    }
+    ctx.globalAlpha /= 0.7;
+    // Membrana ondulante (dentada si es espinosa o monstruo)
+    const spiky = has(c, 'espinosa') || mon;
+    const pts = spiky ? 32 : 24;
     ctx.beginPath();
-    for (let i = 0; i <= 24; i++) {
-      const a = i / 24 * 6.28;
-      const w = 1 + Math.sin(a * 5 + t * 3 + c.id) * 0.04 + Math.sin(a * 3 - t * 2) * 0.03;
+    for (let i = 0; i <= pts; i++) {
+      const a = i / pts * 6.28;
+      let w = 1 + Math.sin(a * 5 + t * 3 + c.id) * 0.04 + Math.sin(a * 3 - t * 2) * 0.03;
+      if (spiky) w *= i % 2 ? 1.22 : 0.95;
       const st = 1 + sp * 0.12 * Math.cos(a) ** 2;
       const x = Math.cos(a) * R * w * st, y = Math.sin(a) * R * w / st;
       i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
@@ -1054,10 +1549,14 @@ function drawCell(c) {
     const g = ctx.createRadialGradient(-R * .3, -R * .3, R * .1, 0, 0, R);
     g.addColorStop(0, light); g.addColorStop(1, dark);
     ctx.fillStyle = g; ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 1.5; ctx.stroke();
-    // Núcleo
-    ctx.fillStyle = 'rgba(40, 30, 90, 0.55)';
-    ctx.beginPath(); ctx.arc(R * .15, 0, R * .33, 0, 6.28); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = edge; ctx.lineWidth = edge.startsWith('#') ? 2.2 : 1.5; ctx.stroke();
+    // Núcleo (ojo rojo en los monstruos)
+    ctx.fillStyle = mon ? '#e53e3e' : 'rgba(40, 30, 90, 0.55)';
+    ctx.beginPath(); ctx.arc(R * .3, 0, R * (mon ? .22 : .3), 0, 6.28); ctx.fill();
+    if (mon) { ctx.fillStyle = '#1a202c'; ctx.beginPath(); ctx.arc(R * .36, 0, R * .09, 0, 6.28); ctx.fill(); }
+    // Marca del linaje en la espalda
+    drawLineageMark(c, -R * .38, 0, R);
   } else {
     // Criatura terrestre: patas, cola, cuerpo y cabeza
     const step = Math.sin(t * 14 + c.id) * sp;
@@ -1068,12 +1567,21 @@ function drawCell(c) {
     ctx.beginPath(); ctx.moveTo(-R * .9, 0);
     ctx.quadraticCurveTo(-R * 1.5, Math.sin(t * 6) * R * .4, -R * 1.9, Math.sin(t * 6 + 1) * R * .3); ctx.stroke();
     ctx.fillStyle = dark; ctx.beginPath(); ctx.ellipse(0, 0, R * 1.05, R * .7, 0, 0, 6.28); ctx.fill();
+    ctx.shadowBlur = 0;
+    if (has(c, 'espinosa') || mon) {   // cresta de púas
+      ctx.fillStyle = light;
+      for (let i = -3; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(i * R * .25, -R * .1); ctx.lineTo(i * R * .25 + R * .12, -R * .55); ctx.lineTo(i * R * .25 + R * .24, -R * .1); ctx.fill(); }
+    }
+    ctx.strokeStyle = edge; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(0, 0, R * 1.05, R * .7, 0, 0, 6.28); ctx.stroke();
     ctx.fillStyle = light; ctx.beginPath(); ctx.ellipse(R * .95, 0, R * .45, R * .4, 0, 0, 6.28); ctx.fill();
-    ctx.fillStyle = '#1a202c';
+    ctx.fillStyle = mon ? '#e53e3e' : '#1a202c';
     for (const s of [-1, 1]) { ctx.beginPath(); ctx.arc(R * 1.15, s * R * .2, R * .08, 0, 6.28); ctx.fill(); }
+    drawLineageMark(c, -R * .3, 0, R);
   }
   ctx.restore();
 
+  if (dimmed) return;
   // Marcas: estéril (☢) y seleccionada (anillo + visión)
   if (c.sterile) {
     ctx.font = `${Math.max(9, R * .9)}px system-ui`; ctx.textAlign = 'center';
@@ -1144,11 +1652,13 @@ function drawPredator(p) {
 function render(dt) {
   t += dt;
   drawBackground(dt);
+  drawEnclosures();
   state.foods.forEach(drawFood);
   state.baits.forEach(drawBait);
   state.predators.filter(p => p.type === 'hidra').forEach(drawPredator);
   state.cells.forEach(drawCell);
   state.predators.filter(p => p.type !== 'hidra').forEach(drawPredator);
+  drawBuildPreview();
 
   // Partículas
   for (const p of fx.particles) {
@@ -1168,7 +1678,7 @@ function render(dt) {
   ctx.globalAlpha = 1;
 
   // Previsualización del área de radiación bajo el cursor
-  if (input.aiming && fx.hover) {
+  if (input.tool === 'radiation' && fx.hover) {
     ctx.save(); ctx.setLineDash([5, 5]);
     ctx.strokeStyle = '#d6f35a'; ctx.fillStyle = 'rgba(214, 243, 90, .12)'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(fx.hover.x, fx.hover.y, RAD_RADIUS, 0, 6.28); ctx.fill(); ctx.stroke();
@@ -1187,11 +1697,12 @@ function render(dt) {
 
   if (state.speed === 0 && !state.over) {
     ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 26px system-ui'; ctx.fillText('⏸️ Pausa', W / 2, H / 2);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 26px system-ui'; ctx.textAlign = 'center';
+    ctx.fillText('⏸️ Pausa', W / 2, H / 2);
   }
 }
 
-// ---------- 7. INTERFAZ ----------
+// ---------- 8. INTERFAZ ----------
 
 const $ = id => document.getElementById(id);
 
@@ -1215,6 +1726,10 @@ function fmtReal(ms) {
   if (s >= 60) return `${Math.floor(s / 60)} min`;
   return `${s} s`;
 }
+const lineageTag = L => `<span style="color:${L.color}">${GLYPH_CHARS[L.glyph]}</span> ${L.letter}`;
+
+/* Escribe HTML solo si ha cambiado (para no romper clics a mitad). */
+function setHTML(el, html) { if (el._html !== html) { el._html = html; el.innerHTML = html; } }
 
 function buildUI() {
   // Mejoras
@@ -1240,8 +1755,21 @@ function buildUI() {
     $('predators').appendChild(el);
     el.querySelector('button').onclick = () => releasePredator(key);
   }
-  $('rad-btn').onclick = () => setAiming(!input.aiming);
+  $('rad-btn').onclick = () => setTool(input.tool === 'radiation' ? null : 'radiation');
+  $('build-btn').onclick = () => setTool(input.tool === 'build' ? null : 'build');
   $('poison-btn').onclick = spreadPoison;
+  // Listas que se regeneran: delegación de eventos
+  $('enclosures').addEventListener('click', e => {
+    const b = e.target.closest('[data-enc]');
+    if (b) removeEnclosure(+b.dataset.enc);
+  });
+  $('lineages').addEventListener('click', e => {
+    const b = e.target.closest('[data-lin]');
+    if (!b) return;
+    const id = +b.dataset.lin;
+    input.highlight = input.highlight === id ? null : id;
+    updateUI();
+  });
   document.querySelectorAll('#speeds button').forEach(b => b.onclick = () => setSpeed(+b.dataset.speed));
   document.querySelectorAll('#jumps button').forEach(b => b.onclick = () => timeJump(+b.dataset.min));
   $('add-m').onclick = () => addSpecimen('M');
@@ -1251,14 +1779,15 @@ function buildUI() {
   // Confirmación en dos pulsaciones (sin confirm(), que algunos visores bloquean)
   $('reset').onclick = () => {
     const btn = $('reset');
-    if (btn.dataset.armed) { clearTimeout(btn.timer); restart(); }
-    else {
-      btn.dataset.armed = '1';
-      btn.textContent = '⚠️ Pulsa otra vez para borrar la colonia';
-      btn.timer = setTimeout(() => { delete btn.dataset.armed; btn.textContent = '↺ Nueva partida'; }, 3000);
+    if (btn.dataset.armed) {
+      clearTimeout(btn.timer);
+      delete btn.dataset.armed; btn.textContent = '↺ Nueva partida';
+      restart();
       return;
     }
-    delete btn.dataset.armed; btn.textContent = '↺ Nueva partida';
+    btn.dataset.armed = '1';
+    btn.textContent = '⚠️ Pulsa otra vez para borrar la colonia';
+    btn.timer = setTimeout(() => { delete btn.dataset.armed; btn.textContent = '↺ Nueva partida'; }, 3000);
   };
 }
 
@@ -1270,15 +1799,18 @@ function buyUpgrade(key) {
   updateUI();
 }
 
+/* Añadir un ejemplar: es el fundador de un linaje nuevo. Aparece en el agua libre. */
 function addSpecimen(sex) {
   forecastSoon();
   if (state.dna < ADD_COST || state.over) return;
   state.dna -= ADD_COST;
-  const c = makeCell(sex);
-  c.eaten = 0;
+  const p = randomPointIn(0, 40);
+  const c = makeCell(sex, p.x, p.y);
+  const L = newLineage(c);
   state.cells.push(c);
   burst(c.x, c.y, sex === 'M' ? '#90cdf4' : '#fbb6ce', 14);
-  floater(c.x, c.y - 15, sex === 'M' ? 'Nuevo ♂' : 'Nueva ♀', '#fff');
+  floater(c.x, c.y - 15, `${sex === 'M' ? 'Nuevo ♂' : 'Nueva ♀'} · linaje ${L.letter}`, '#fff');
+  logEvent(`➕ Llega ${sex === 'M' ? 'un macho' : 'una hembra'}: funda el linaje ${L.letter}`, 'add-' + c.id);
   checkOver();
   updateUI();
 }
@@ -1288,20 +1820,30 @@ function releasePredator(key) {
   const P = PREDATORS[key];
   if (state.dna < P.cost || state.over) return;
   state.dna -= P.cost;
+  const pos = randomPointIn(0, 40);
   state.predators.push({
-    type: key, x: rand(40, W - 40), y: rand(40, H - 40), vx: 0, vy: 0,
+    type: key, x: pos.x, y: pos.y, vx: 0, vy: 0, zone: 0,
     angle: 0, wander: rand(0, 6.28), age: 0, cooldown: 5, sinceMeal: 0,
   });
-  const p = state.predators[state.predators.length - 1];
-  burst(p.x, p.y, P.color, 16);
+  burst(pos.x, pos.y, P.color, 16);
   updateUI();
 }
 
-function setAiming(on) {
-  input.aiming = on && state.dna >= RAD_COST && !state.over;
-  canvas.classList.toggle('aiming', input.aiming);
-  $('aim-hint').classList.toggle('hidden', !input.aiming);
-  $('rad-btn').classList.toggle('on', input.aiming);
+const TOOL_HINTS = {
+  radiation: '☢️ Haz clic en el estanque para inyectar radiación · <kbd>Esc</kbd> cancela',
+  build: '🧱 Arrastra para dibujar el recinto · <kbd>Esc</kbd> cancela',
+};
+function setTool(tool) {
+  if (tool === 'radiation' && state.dna < RAD_COST) tool = null;
+  if (state.over) tool = null;
+  input.tool = tool;
+  input.drag = null;
+  canvas.classList.toggle('aiming', !!tool);
+  $('aim-hint').classList.toggle('hidden', !tool);
+  if (tool) $('aim-hint').innerHTML = TOOL_HINTS[tool];
+  $('rad-btn').classList.toggle('on', tool === 'radiation');
+  $('build-btn').classList.toggle('on', tool === 'build');
+  updateUI();
 }
 
 function setSpeed(s) {
@@ -1341,20 +1883,23 @@ function updateUI() {
   const ratio = n / PLAGUE_LIMIT;
   $('pop-bar').style.width = Math.min(100, ratio * 100) + '%';
   $('pop-bar').style.background = ratio > .75 ? 'var(--danger)' : ratio > .5 ? 'var(--accent-2)' : 'var(--accent)';
-  $('pop-chips').innerHTML = `
+  const mutants = count(c => c.traits.length > 0), monsters = count(isMonster);
+  setHTML($('pop-chips'), `
     <span class="m">♂ ${count(c => c.sex === 'M')}</span>
     <span class="f">♀ ${count(c => c.sex === 'F')}</span>
     <span>🥚 crías ${count(c => stageOf(c) === 'cría')}</span>
     <span>💪 adultas ${count(c => stageOf(c) === 'adulta')}</span>
     <span>👴 viejas ${count(c => stageOf(c) === 'vieja')}</span>
     <span>☢ estériles ${count(c => c.sterile)}</span>
+    <span>🧬 mutantes ${mutants}</span>
+    ${monsters ? `<span style="color:#9ae6b4">👹 monstruos ${monsters}</span>` : ''}
     <span>🛡️ resistencia ${n ? Math.round(cells.reduce((a, c) => a + c.resist, 0) / n * 100) : 0}%</span>
-    <span>🧬 gen. máx ${state.stats.maxGen}</span>
-    <span>☠️ depredadores ${state.predators.length}</span>`;
+    <span>gen. máx ${state.stats.maxGen}</span>
+    <span>☠️ depredadores ${state.predators.length}</span>`);
   const sexes = new Set(cells.map(c => c.sex));
   $('pop-hint').textContent = n > 0 && sexes.size < 2
     ? `Solo hay ${cells[0].sex === 'M' ? 'machos' : 'hembras'}: añade un ejemplar del otro sexo para que empiece la reproducción.`
-    : ratio > .75 ? '⚠️ ¡La población se está descontrolando! Usa depredadores o radiación.'
+    : ratio > .75 ? '⚠️ ¡La población se está descontrolando! Usa depredadores, veneno o radiación.'
     : `Adultas con ${ADULT_AT} de comida · ${MAX_BREEDS} camadas por célula · luego envejecen.`;
   $('add-m').textContent = `+ ♂ Macho (🧬${ADD_COST})`;
   $('add-f').textContent = `+ ♀ Hembra (🧬${ADD_COST})`;
@@ -1378,37 +1923,70 @@ function updateUI() {
     $('pips-' + key).querySelectorAll('i').forEach((p, i) => p.classList.toggle('on', i < lvl));
   }
 
-  // Depredadores y radiación
+  // Depredadores, radiación y veneno
   for (const [key, P] of Object.entries(PREDATORS)) {
     $('pred-' + key).disabled = dna < P.cost || !!state.over;
     const active = state.predators.filter(p => p.type === key).length;
     $('pc-' + key).textContent = active ? `×${active} activos` : '';
   }
-  $('rad-btn').textContent = input.aiming ? 'Cancelar' : `🧬 ${RAD_COST}`;
-  $('rad-btn').disabled = (dna < RAD_COST && !input.aiming) || !!state.over;
+  $('rad-btn').textContent = input.tool === 'radiation' ? 'Cancelar' : `🧬 ${RAD_COST}`;
+  $('rad-btn').disabled = (dna < RAD_COST && input.tool !== 'radiation') || !!state.over;
   $('poison-btn').textContent = `🧬 ${POISON_COST}`;
   $('poison-btn').disabled = dna < POISON_COST || !!state.over;
   $('bait-count').textContent = state.baits.length ? `×${state.baits.length} cebos` : '';
   document.querySelectorAll('#jumps button').forEach(b => b.disabled = !!state.over);
 
+  // Recintos
+  $('build-btn').textContent = input.tool === 'build' ? 'Cancelar construcción'
+    : `🧱 Construir recinto (🧬${BUILD_COST}) · ${state.enclosures.length}/${MAX_ENCLOSURES}`;
+  $('build-btn').disabled = input.tool !== 'build' && (dna < BUILD_COST || state.enclosures.length >= MAX_ENCLOSURES || !!state.over);
+  setHTML($('enclosures'), state.enclosures.map(e => {
+    const ins = cells.filter(c => c.zone === e.id);
+    const m = ins.filter(c => c.sex === 'M').length, f = ins.length - m;
+    const crias = ins.filter(c => stageOf(c) === 'cría').length;
+    const hungry = ins.some(c => c.energy < HUNGRY && stageOf(c) !== 'cría');
+    return `<div class="enc-row"><span><b>Recinto ${encLabel(e.id)}</b> · <span class="m">♂${m}</span> <span class="f">♀${f}</span> · 🥚${crias}${hungry ? ' · <span style="color:var(--danger)">🍖 hambre</span>' : ''}</span>
+      <button data-enc="${e.id}">Derribar</button></div>`;
+  }).join(''));
+
+  // Linajes vivos
+  const alive = state.lineages.filter(L => cells.some(c => c.lineage === L.id));
+  const extinct = state.lineages.length - alive.length;
+  if (input.highlight && !alive.some(L => L.id === input.highlight)) input.highlight = null;
+  setHTML($('lineages'), alive.map(L =>
+    `<button class="lin${input.highlight === L.id ? ' on' : ''}" data-lin="${L.id}">${lineageTag(L)} · ${cells.filter(c => c.lineage === L.id).length}</button>`
+  ).join('') + (extinct ? `<span>🪦 ${extinct} extinguido${extinct > 1 ? 's' : ''}</span>` : ''));
+
+  // Sucesos
+  setHTML($('events'), state.events.length
+    ? state.events.map(e => `<li><time>${fmtClock(e.t).replace('Día ', 'D')}</time>${e.text}${e.n > 1 ? ` <b>×${e.n}</b>` : ''}</li>`).join('')
+    : '<li style="color:var(--muted)">Aún no ha pasado nada destacable.</li>');
+
   // Ficha de la célula seleccionada
   const sel = cells.find(c => c.id === state.selected);
   $('selected-card').classList.toggle('hidden', !sel);
   if (sel) {
-    const st = stageOf(sel);
-    $('selected-info').innerHTML = `
+    const st = stageOf(sel), L = lineageOf(sel);
+    const kids = cells.filter(c => c.mom === sel.id || c.dad === sel.id).length;
+    $('selected-title').textContent = `Célula seleccionada · #${sel.id}`;
+    setHTML($('selected-info'), `
       <div class="kv">
         <span>Sexo</span><b class="${sel.sex === 'M' ? 'm' : 'f'}">${sel.sex === 'M' ? '♂ Macho' : '♀ Hembra'}</b>
+        <span>Linaje</span><b>${L ? lineageTag(L) : '-'}${L && L.founder === sel.id ? ' (fundador)' : ''}</b>
+        <span>Padres</span><b>${sel.mom ? `♀#${sel.mom} · ♂#${sel.dad}` : 'desconocidos'}</b>
         <span>Etapa</span><b>${st}${sel.sterile ? ' · ☢ estéril' : ''}</b>
+        <span>Dónde</span><b>${sel.zone ? `🧱 Recinto ${encLabel(sel.zone)}` : 'agua libre'}</b>
         <span>Generación</span><b>${sel.gen}</b>
-        <span>Edad</span><b>${fmtDur(sel.age)} / ${fmtDur(MAX_AGE)}</b>
+        <span>Edad</span><b>${fmtDur(sel.age)} / ${fmtDur(maxAge(sel))}</b>
         <span>Crecimiento</span><b>${Math.min(ADULT_AT, Math.floor(sel.eaten))} / ${ADULT_AT}</b>
         <div class="mini-bar"><div style="width:${Math.min(100, sel.eaten / ADULT_AT * 100)}%"></div></div>
-        <span>Camadas</span><b>${sel.breeds} / ${MAX_BREEDS}</b>
-        <span>Resistencia al veneno</span><b>${Math.round(sel.resist * 100)}%</b>
+        <span>Camadas</span><b>${sel.breeds} / ${MAX_BREEDS} · ${kids} hijos vivos</b>
+        <span>Resistencia al veneno</span><b>${has(sel, 'inmune') ? 'inmune' : Math.round(sel.resist * 100) + '%'}</b>
         <span>Energía</span><b>${Math.round(sel.energy)}%</b>
-        <div class="mini-bar"><div style="width:${sel.energy}%;background:${sel.energy < 30 ? 'var(--danger)' : 'var(--accent)'}"></div></div>
-      </div>`;
+        <div class="mini-bar"><div style="width:${Math.max(0, sel.energy)}%;background:${sel.energy < HUNGRY ? 'var(--danger)' : 'var(--accent)'}"></div></div>
+        <span>Mutaciones</span><b>${sel.traits.length ? '' : 'ninguna'}</b>
+        ${sel.traits.length ? `<div class="traits">${sel.traits.map(k => `<span title="${TRAITS[k].desc}">${TRAITS[k].icon} ${TRAITS[k].name}</span>`).join('')}</div>` : ''}
+      </div>`);
   }
 
   $('clock').innerHTML = `🕒 ${fmtClock(state.clock)} <small>${state.speed ? `· x${state.speed}` : '· en pausa'}</small>`;
@@ -1438,8 +2016,10 @@ function showReport(title, sub, rep) {
     <div>👴 Vejez<b>${d.vejez}</b></div>
     <div>☠️ Depredadores<b>${d.depredador}</b></div>
     <div>☣️ Veneno<b>${d.veneno}</b></div>
-    <div>🧬 ADN ganado<b>+${rep.dna}</b></div>
-    <div>Generación máx.<b>${rep.maxGen}</b></div>`;
+    <div>🍖 Canibalismo<b>${d.canibalismo}</b></div>
+    <div>👹 Devoradas por monstruos<b>${d.monstruo}</b></div>
+    <div>🧬 Mutaciones nuevas<b>${rep.mutations}</b></div>
+    <div>🧬 ADN ganado<b>+${rep.dna}</b></div>`;
   $('m-chart-wrap').classList.remove('hidden');
   $('m-close').textContent = state.over ? 'Nueva partida' : 'Continuar';
   $('modal').classList.remove('hidden');
@@ -1456,17 +2036,19 @@ function overAlert() {
 
 function showGameOver() {
   $('m-title').textContent = state.over === 'plaga' ? '🐀 Plaga' : '💀 Extinción';
-  $('m-sub').textContent = `${fmtClock(state.clock)} · Generación máxima: ${state.stats.maxGen}`;
+  $('m-sub').textContent = `${fmtClock(state.clock)} · Generación máxima: ${state.stats.maxGen} · ${state.lineages.length} linajes`;
   $('m-alert').innerHTML = overAlert();
   const d = state.stats.deaths;
   $('m-stats').innerHTML = `
     <div>Nacimientos<b>${state.stats.births}</b></div>
-    <div>Comida total<b>${Math.floor(state.stats.food)}</b></div>
+    <div>Mutaciones<b>${state.stats.mutations}</b></div>
     <div>🍽️ Hambre<b>${d.hambre}</b></div>
     <div>👴 Vejez<b>${d.vejez}</b></div>
     <div>☠️ Depredadores<b>${d.depredador}</b></div>
     <div>☢️ Radiación<b>${d.radiacion}</b></div>
-    <div>☣️ Veneno<b>${d.veneno}</b></div>`;
+    <div>☣️ Veneno<b>${d.veneno}</b></div>
+    <div>🍖 Canibalismo<b>${d.canibalismo}</b></div>
+    <div>👹 Monstruos<b>${d.monstruo}</b></div>`;
   $('m-chart-wrap').classList.add('hidden');
   $('m-close').textContent = 'Nueva partida';
   $('modal').classList.remove('hidden');
@@ -1545,7 +2127,7 @@ function drawChart(hoverX) {
 $('m-chart').addEventListener('pointermove', e => drawChart(e.clientX - $('m-chart').getBoundingClientRect().left));
 $('m-chart').addEventListener('pointerleave', () => drawChart(null));
 
-// ---------- Entrada ----------
+// ---------- 9. ENTRADA, BUCLE PRINCIPAL Y ARRANQUE ----------
 
 const KEY_DIRS = {
   ArrowUp: [0, -1], KeyW: [0, -1], ArrowDown: [0, 1], KeyS: [0, 1],
@@ -1554,7 +2136,7 @@ const KEY_DIRS = {
 window.addEventListener('keydown', e => {
   if (KEY_DIRS[e.code]) { input.keys.add(e.code); e.preventDefault(); }
   if (e.code === 'KeyP') setSpeed(state.speed ? 0 : 1);
-  if (e.code === 'Escape') setAiming(false);
+  if (e.code === 'Escape') setTool(null);
 });
 window.addEventListener('keyup', e => input.keys.delete(e.code));
 
@@ -1562,25 +2144,60 @@ function pointerPos(e) {
   const r = canvas.getBoundingClientRect();
   return { x: e.clientX - r.left, y: e.clientY - r.top };
 }
+const dragRect = d => ({
+  x: Math.min(d.x0, d.x1), y: Math.min(d.y0, d.y1),
+  w: Math.abs(d.x1 - d.x0), h: Math.abs(d.y1 - d.y0),
+});
+
 canvas.addEventListener('pointerdown', e => {
   const pos = pointerPos(e);
-  if (input.aiming) { irradiate(pos.x, pos.y); return; }
-  // ¿Clic sobre una célula? → seleccionarla. Si no, guiar a la seleccionada.
-  const hit = state.cells.find(c => Math.hypot(c.x - pos.x, c.y - pos.y) < radiusOf(c) + 8);
-  if (hit) { state.selected = hit.id; updateUI(); return; }
-  input.pointer = pos;
   canvas.setPointerCapture(e.pointerId);
+  if (input.tool === 'radiation') { irradiate(pos.x, pos.y); return; }
+  if (input.tool === 'build') { input.drag = { x0: pos.x, y0: pos.y, x1: pos.x, y1: pos.y }; return; }
+  // ¿Sobre una célula o un depredador? → cogerlo con las pinzas (y seleccionarlo si es célula)
+  const cell = state.cells.find(c => Math.hypot(c.x - pos.x, c.y - pos.y) < radiusOf(c) + 8);
+  if (cell) {
+    state.selected = cell.id;
+    input.carry = { obj: cell };
+    updateUI();
+    return;
+  }
+  const pred = state.predators.find(p => Math.hypot(p.x - pos.x, p.y - pos.y) < PREDATORS[p.type].size + 8);
+  if (pred) { input.carry = { obj: pred }; return; }
+  // Si no, guiar a la seleccionada hacia el punto
+  input.pointer = pos;
 });
 canvas.addEventListener('pointermove', e => {
-  fx.hover = pointerPos(e);
-  if (input.pointer) input.pointer = fx.hover;
+  const pos = pointerPos(e);
+  fx.hover = pos;
+  if (input.drag) { input.drag.x1 = pos.x; input.drag.y1 = pos.y; }
+  if (input.carry) {
+    const o = input.carry.obj;
+    o.x = clamp(pos.x, 5, W - 5); o.y = clamp(pos.y, 5, H - 5);
+    o.vx = o.vy = 0;
+  }
+  if (input.pointer) input.pointer = pos;
 });
-const releasePointer = () => { input.pointer = null; };
+function releasePointer() {
+  if (input.drag) {
+    const r = dragRect(input.drag);
+    input.drag = null;
+    if (r.w > 10 || r.h > 10) { if (buildEnclosure(r)) setTool(null); }
+  }
+  if (input.carry) {
+    // Soltar: la zona la decide dónde cae (dentro de un recinto o en el agua libre)
+    const { obj } = input.carry;
+    obj.zone = zoneAt(obj.x, obj.y);
+    confine(obj, bodyRadius(obj));
+    input.carry = null;
+    forecastSoon();
+    updateUI();
+  }
+  input.pointer = null;
+}
 canvas.addEventListener('pointerup', releasePointer);
 canvas.addEventListener('pointercancel', releasePointer);
 canvas.addEventListener('pointerleave', () => { fx.hover = null; });
-
-// ---------- 8. BUCLE PRINCIPAL Y ARRANQUE ----------
 
 function resize() {
   const rect = canvas.getBoundingClientRect();
@@ -1588,7 +2205,12 @@ function resize() {
   W = rect.width; H = rect.height;
   canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  for (const o of [...state.foods, ...state.cells, ...state.predators]) { o.x = clamp(o.x, 10, W - 10); o.y = clamp(o.y, 10, H - 10); }
+  // Recintos que se salgan de la nueva pantalla: se encogen para caber
+  for (const e of state.enclosures) {
+    e.x = Math.min(e.x, Math.max(0, W - MIN_ENCLOSURE - 4)); e.y = Math.min(e.y, Math.max(0, H - MIN_ENCLOSURE - 4));
+    e.w = Math.max(MIN_ENCLOSURE, Math.min(e.w, W - e.x - 4)); e.h = Math.max(MIN_ENCLOSURE, Math.min(e.h, H - e.y - 4));
+  }
+  for (const o of [...state.foods, ...state.cells, ...state.predators, ...state.baits]) confine(o, bodyRadius(o));
   buildDecor();
 }
 window.addEventListener('resize', resize);
@@ -1596,6 +2218,7 @@ window.addEventListener('resize', resize);
 function restart() {
   try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
   state = newState();
+  input.highlight = null;
   updateUI.overShown = false;
   start(true);
 }
@@ -1604,6 +2227,7 @@ function restart() {
 function start(isNew) {
   if (isNew) {
     const first = makeCell(null, W / 2, H / 2);   // célula inicial de sexo aleatorio
+    newLineage(first);
     state.cells.push(first);
     state.selected = first.id;
     for (let i = 0; i < 25; i++) spawnFood();
@@ -1611,7 +2235,7 @@ function start(isNew) {
                'Hazla crecer y añade un ejemplar del otro sexo para criar');
   }
   setSpeed(state.speed);
-  setAiming(false);
+  setTool(null);
   updateUI();
   save();
 }
@@ -1639,8 +2263,9 @@ function loop(now) {
 
   uiTimer += dt; saveTimer += dt;
   if (uiTimer > 0.25) { uiTimer = 0; updateUI(); }
+  // Pronóstico: cada ~6 s, repartiendo sus simulaciones en fotogramas distintos
   forecastTimer += dt;
-  if (forecastTimer > 6) { forecastTimer = 0; updateForecast(); }
+  if (forecastTimer > 6) { forecastTimer = forecastStep() ? 0 : 5.8; }
   if (saveTimer > 5) { saveTimer = 0; save(); }
   requestAnimationFrame(loop);
 }
@@ -1663,7 +2288,10 @@ if (saved) {
 requestAnimationFrame(loop);
 
 // Acceso desde la consola (depuración / trampas 😉)
-window.evo = { get state() { return state; }, fastForward, timeJump, catchUp, irradiate, releasePredator, addSpecimen, spreadPoison, forecast, updateUI, save };
+window.evo = {
+  get state() { return state; }, fastForward, timeJump, catchUp, irradiate, releasePredator, addSpecimen,
+  spreadPoison, forecast, updateUI, save, buildEnclosure, removeEnclosure, zoneAt, mate,
+};
 </script>
 </body>
 </html>
